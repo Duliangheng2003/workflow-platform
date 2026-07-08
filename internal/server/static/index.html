@@ -6,163 +6,404 @@
 <title>Workflow Platform</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; color: #333; }
-header { background: #1a1a2e; color: #fff; padding: 16px 32px; display: flex; align-items: center; gap: 32px; }
-header h1 { font-size: 1.2rem; }
-nav { display: flex; gap: 8px; }
-nav a { color: #ccc; text-decoration: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
-nav a:hover { background: #16213e; color: #fff; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; color: #1a1a2e; font-size: 14px; }
+header { background: #1a1a2e; color: #fff; padding: 14px 28px; display: flex; align-items: center; gap: 24px; }
+header h1 { font-size: 1.1rem; font-weight: 600; }
+nav { display: flex; gap: 4px; }
+nav a { color: #94a3b8; text-decoration: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+nav a:hover { background: #1e293b; color: #e2e8f0; }
 nav a.active { background: #0f3460; color: #fff; }
-main { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+main { max-width: 1100px; margin: 0 auto; padding: 20px 16px; }
 .page { display: none; }
 .page.active { display: block; }
-.card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-.card h3 { margin-bottom: 12px; color: #1a1a2e; }
-table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
-th { background: #fafafa; font-weight: 600; color: #666; }
-.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 500; }
-.badge-running { background: #e3f2fd; color: #1565c0; }
-.badge-completed { background: #e8f5e9; color: #2e7d32; }
-.badge-failed { background: #fce4ec; color: #c62828; }
-.badge-paused { background: #fff3e0; color: #e65100; }
-.badge-pending { background: #f3e5f5; color: #6a1b9a; }
-button { padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+
+/* Cards */
+.card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.card-header h3 { font-size: 1rem; font-weight: 600; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 500; }
 .btn-primary { background: #0f3460; color: #fff; }
 .btn-primary:hover { background: #1a5276; }
-.btn-approve { background: #2e7d32; color: #fff; }
-.btn-reject { background: #c62828; color: #fff; }
-.btn-sm { padding: 4px 10px; font-size: 0.8rem; }
-.form-group { margin-bottom: 12px; }
-.form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 4px; color: #555; }
-.form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
-.form-group textarea { font-family: monospace; min-height: 80px; }
-pre { background: #f8f9fa; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; }
-.json-view { background: #f8f9fa; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.82rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
-.empty { text-align: center; padding: 40px; color: #999; }
-.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; }
-.modal.active { display: flex; align-items: center; justify-content: center; }
-.modal-content { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 700px; max-height: 80vh; overflow-y: auto; }
-.modal-content h2 { margin-bottom: 16px; }
-.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-.node-row { display: grid; grid-template-columns: 1fr 120px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; padding: 8px; background: #fafafa; border-radius: 6px; }
-.edge-row { display: grid; grid-template-columns: 1fr 100px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; padding: 8px; background: #fafafa; border-radius: 6px; }
+.btn-success { background: #059669; color: #fff; }
+.btn-danger { background: #dc2626; color: #fff; }
+.btn-outline { background: #fff; color: #475569; border: 1px solid #cbd5e1; }
+.btn-outline:hover { background: #f8fafc; border-color: #94a3b8; }
+.btn-sm { padding: 4px 10px; font-size: 0.78rem; }
+.btn-xs { padding: 2px 8px; font-size: 0.75rem; }
+
+/* Badges */
+.badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 500; }
+.badge-running { background: #dbeafe; color: #1d4ed8; }
+.badge-completed { background: #d1fae5; color: #065f46; }
+.badge-failed { background: #fee2e2; color: #991b1b; }
+.badge-paused { background: #fef3c7; color: #92400e; }
+.badge-pending { background: #f3e8ff; color: #6b21a8; }
+.badge-approved { background: #d1fae5; color: #065f46; }
+.badge-rejected { background: #fee2e2; color: #991b1b; }
+.badge-code { background: #dbeafe; color: #1d4ed8; }
+.badge-llm { background: #f3e8ff; color: #6b21a8; }
+.badge-condition { background: #fef3c7; color: #92400e; }
+.badge-human { background: #fce7f3; color: #9d174d; }
+
+/* Table */
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+th { background: #f8fafc; font-weight: 600; color: #64748b; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+td { font-size: 0.85rem; }
+tr:hover { background: #f8fafc; }
+
+/* Form */
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #475569; }
+.form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.85rem; font-family: inherit; background: #fff; }
+.form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #0f3460; box-shadow: 0 0 0 3px rgba(15,52,96,0.1); }
+.form-group textarea { font-family: 'SF Mono', 'Monaco', monospace; min-height: 60px; font-size: 0.8rem; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+/* Node Card */
+.node-list { display: flex; flex-direction: column; gap: 8px; }
+.node-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+.node-card .node-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+.node-card .node-info { flex: 1; }
+.node-card .node-info .node-id { font-weight: 600; font-size: 0.85rem; }
+.node-card .node-info .node-desc { font-size: 0.78rem; color: #64748b; }
+.node-card .node-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+/* Edge List */
+.edge-list { display: flex; flex-direction: column; gap: 6px; }
+.edge-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.85rem; }
+.edge-row .arrow { color: #94a3b8; font-size: 1.1rem; }
+.edge-row .cond { font-size: 0.75rem; color: #92400e; background: #fef3c7; padding: 1px 8px; border-radius: 4px; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; }
+.modal-overlay.active { display: flex; align-items: center; justify-content: center; }
+.modal { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 640px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.modal h2 { font-size: 1.1rem; margin-bottom: 16px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
+
+/* Flow visualization */
+.flow-chart { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 16px; }
+.flow-node { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 500; }
+.flow-node.start { background: #e0e7ff; color: #3730a3; }
+.flow-node.end { background: #f1f5f9; color: #64748b; }
+.flow-arrow { color: #94a3b8; font-size: 1.2rem; padding: 2px 0; }
+.flow-arrow .branch-label { font-size: 0.7rem; color: #92400e; margin-left: 4px; }
+
+/* Instance detail */
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.detail-label { font-size: 0.78rem; color: #64748b; }
+.detail-value { font-size: 0.85rem; margin-bottom: 8px; }
+
+/* JSON view */
+.json-box { background: #1e293b; color: #e2e8f0; padding: 12px 16px; border-radius: 8px; font-family: 'SF Mono', 'Monaco', monospace; font-size: 0.78rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 48px 20px; color: #94a3b8; }
+.empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+.empty-state p { font-size: 0.9rem; }
 </style>
 </head>
 <body>
+
 <header>
   <h1>⚙️ Workflow Platform</h1>
   <nav>
-    <a onclick="showPage('templates')" class="active" data-page="templates">流程模板</a>
-    <a onclick="showPage('instances')" data-page="instances">运行实例</a>
-    <a onclick="showPage('tasks')" data-page="tasks">人工任务</a>
+    <a onclick="showPage('templates')" class="active" data-page="templates">Templates</a>
+    <a onclick="showPage('instances')" data-page="instances">Instances</a>
+    <a onclick="showPage('tasks')" data-page="tasks">Tasks</a>
   </nav>
 </header>
 
 <main>
-<!-- Templates Page -->
+
+<!-- ============ TEMPLATES PAGE ============ -->
 <div id="page-templates" class="page active">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-    <h2>流程模板</h2>
-    <button class="btn-primary" onclick="showCreateTemplate()">+ 新建模板</button>
-  </div>
   <div class="card">
+    <div class="card-header">
+      <h3>📋 Workflow Templates</h3>
+      <button class="btn btn-primary" onclick="openBuilder()">+ New Template</button>
+    </div>
     <table>
-      <thead><tr><th>名称</th><th>描述</th><th>节点数</th><th>创建时间</th><th>操作</th></tr></thead>
-      <tbody id="template-list"><tr><td colspan="5" class="empty">加载中...</td></tr></tbody>
+      <thead><tr><th>Name</th><th>Nodes</th><th>Created</th><th></th></tr></thead>
+      <tbody id="template-list"><tr><td colspan="4" class="empty-state"><p>No templates yet. Click "New Template" to create one.</p></td></tr></tbody>
     </table>
   </div>
 </div>
 
-<!-- Instances Page -->
+<!-- ============ INSTANCES PAGE ============ -->
 <div id="page-instances" class="page">
-  <h2 style="margin-bottom:16px;">运行实例</h2>
   <div class="card">
+    <div class="card-header">
+      <h3>▶️ Running Instances</h3>
+    </div>
     <table>
-      <thead><tr><th>ID</th><th>模板</th><th>状态</th><th>当前节点</th><th>创建时间</th><th>操作</th></tr></thead>
-      <tbody id="instance-list"><tr><td colspan="6" class="empty">加载中...</td></tr></tbody>
+      <thead><tr><th>ID</th><th>Template</th><th>Status</th><th>Node</th><th>Time</th><th></th></tr></thead>
+      <tbody id="instance-list"><tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr></tbody>
     </table>
   </div>
 </div>
 
-<!-- Tasks Page -->
+<!-- ============ TASKS PAGE ============ -->
 <div id="page-tasks" class="page">
-  <h2 style="margin-bottom:16px;">人工任务</h2>
-  <div style="margin-bottom:12px;">
-    <button class="btn-sm btn-primary" onclick="loadTasks('pending')">待处理</button>
-    <button class="btn-sm" onclick="loadTasks('approved')">已通过</button>
-    <button class="btn-sm" onclick="loadTasks('rejected')">已拒绝</button>
-    <button class="btn-sm" onclick="loadTasks('')">全部</button>
-  </div>
   <div class="card">
+    <div class="card-header">
+      <h3>👤 Human Tasks</h3>
+      <div style="display:flex;gap:4px;">
+        <button class="btn btn-sm btn-outline" onclick="loadTasks('')">All</button>
+        <button class="btn btn-sm btn-primary" onclick="loadTasks('pending')">Pending</button>
+        <button class="btn btn-sm btn-outline" onclick="loadTasks('approved')">Approved</button>
+        <button class="btn btn-sm btn-outline" onclick="loadTasks('rejected')">Rejected</button>
+      </div>
+    </div>
     <table>
-      <thead><tr><th>ID</th><th>节点描述</th><th>负责人</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
-      <tbody id="task-list"><tr><td colspan="6" class="empty">加载中...</td></tr></tbody>
+      <thead><tr><th>Task</th><th>Node</th><th>Assignee</th><th>Status</th><th>Time</th><th></th></tr></thead>
+      <tbody id="task-list"><tr><td colspan="6" class="empty-state"><p>No tasks.</p></td></tr></tbody>
     </table>
   </div>
 </div>
-</main>
 
-<!-- Create Template Modal -->
-<div id="modal-template" class="modal">
-  <div class="modal-content">
-    <h2>新建流程模板</h2>
-    <div class="form-group">
-      <label>名称</label>
-      <input id="tmpl-name" placeholder="my_workflow">
+<!-- ============ MODAL: Template Builder ============ -->
+<div id="modal-builder" class="modal-overlay">
+  <div class="modal" style="max-width:720px;">
+    <h2>✏️ New Workflow Template</h2>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Template Name</label>
+        <input id="b-name" placeholder="my_workflow">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input id="b-desc" placeholder="What does this workflow do?">
+      </div>
     </div>
-    <div class="form-group">
-      <label>描述</label>
-      <input id="tmpl-desc" placeholder="A simple review workflow">
+
+    <!-- Nodes -->
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="font-size:0.8rem;font-weight:600;color:#475569;">Nodes</label>
+        <button class="btn btn-sm btn-primary" onclick="openAddNode()">+ Add Node</button>
+      </div>
+      <div id="b-nodes" class="node-list">
+        <div class="empty-state" style="padding:16px;"><p style="font-size:0.8rem;">No nodes yet. Add at least one.</p></div>
+      </div>
     </div>
-    <div class="form-group">
-      <label>节点 (JSON)</label>
-      <textarea id="tmpl-nodes" rows="6">[{"id":"step1","type":"code","webhook_url":"http://localhost:9000/step1","description":"Step 1"}]</textarea>
+
+    <!-- Edges -->
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="font-size:0.8rem;font-weight:600;color:#475569;">Connections</label>
+        <button class="btn btn-sm btn-outline" onclick="openAddEdge()">+ Add Connection</button>
+      </div>
+      <div id="b-edges" class="edge-list">
+        <div class="empty-state" style="padding:16px;"><p style="font-size:0.8rem;">Connect nodes to define the flow.</p></div>
+      </div>
     </div>
-    <div class="form-group">
-      <label>连接 (JSON)</label>
-      <textarea id="tmpl-edges" rows="4">[{"from":"START","to":"step1"},{"from":"step1","to":"END"}]</textarea>
+
+    <!-- Flow preview -->
+    <div style="margin-bottom:16px;">
+      <label style="font-size:0.8rem;font-weight:600;color:#475569;display:block;margin-bottom:8px;">Flow Preview</label>
+      <div id="b-preview" class="flow-chart" style="background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
+        <div class="empty-state" style="padding:16px;"><p style="font-size:0.8rem;">Add nodes and connections to see the flow.</p></div>
+      </div>
     </div>
+
     <div class="modal-actions">
-      <button onclick="closeModal('modal-template')">取消</button>
-      <button class="btn-primary" onclick="createTemplate()">创建</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-builder')">Cancel</button>
+      <button class="btn btn-success" onclick="saveTemplate()">💾 Save Template</button>
     </div>
   </div>
 </div>
 
-<!-- Instance Detail Modal -->
-<div id="modal-instance" class="modal">
-  <div class="modal-content">
-    <h2>实例详情</h2>
-    <div id="instance-detail">加载中...</div>
+<!-- ============ MODAL: Add/Edit Node ============ -->
+<div id="modal-node" class="modal-overlay">
+  <div class="modal" style="max-width:560px;">
+    <h2 id="node-modal-title">Add Node</h2>
+
+    <div class="form-group">
+      <label>Node ID</label>
+      <input id="n-id" placeholder="step1">
+    </div>
+    <div class="form-group">
+      <label>Type</label>
+      <select id="n-type" onchange="onNodeTypeChange()">
+        <option value="code">🔗 Code — Call an API/webhook</option>
+        <option value="llm">🤖 LLM — Ask an AI model</option>
+        <option value="condition">🔀 Condition — Branch based on state</option>
+        <option value="human">👤 Human — Wait for approval</option>
+      </select>
+    </div>
+
+    <!-- Code fields -->
+    <div id="n-fields-code" class="node-fields">
+      <div class="form-group">
+        <label>Tag <span style="font-weight:400;color:#94a3b8;">(optional — for future API management)</span></label>
+        <input id="n-tag" placeholder="e.g. order-api, payment">
+      </div>
+      <div class="form-group">
+        <label>Webhook URL</label>
+        <input id="n-url" placeholder="https://my-app.com/api/endpoint">
+      </div>
+    </div>
+
+    <!-- LLM fields -->
+    <div id="n-fields-llm" class="node-fields" style="display:none;">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Provider</label>
+          <select id="n-provider">
+            <option value="openai">OpenAI</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Model</label>
+          <input id="n-model" placeholder="gpt-4o / deepseek-chat">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>API Key Env</label>
+          <input id="n-apikey" placeholder="OPENAI_API_KEY">
+        </div>
+        <div class="form-group">
+          <label>Base URL <span style="font-weight:400;color:#94a3b8;">(optional)</span></label>
+          <input id="n-baseurl" placeholder="https://api.openai.com">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>System Prompt <span style="font-weight:400;color:#94a3b8;">(optional)</span></label>
+        <textarea id="n-sysprompt" rows="2" placeholder="You are a helpful assistant..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>User Prompt <span style="font-weight:400;color:#94a3b8;">use {state.path} for variables</span></label>
+        <textarea id="n-userprompt" rows="3" placeholder="Analyze the data: {state._global}"></textarea>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>Temperature</label>
+          <input id="n-temp" type="number" step="0.1" value="0.7" placeholder="0.7">
+        </div>
+        <div class="form-group">
+          <label>Max Tokens</label>
+          <input id="n-maxtokens" type="number" value="1024" placeholder="1024">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input id="n-llmdesc" placeholder="What this step does">
+        </div>
+      </div>
+    </div>
+
+    <!-- Condition fields -->
+    <div id="n-fields-condition" class="node-fields" style="display:none;">
+      <div class="form-group">
+        <label>Expression <span style="font-weight:400;color:#94a3b8;">e.g. state.step1.result = ok</span></label>
+        <input id="n-expr" placeholder="state.step1.status = ok">
+      </div>
+    </div>
+
+    <!-- Human fields -->
+    <div id="n-fields-human" class="node-fields" style="display:none;">
+      <div class="form-group">
+        <label>Description <span style="font-weight:400;color:#94a3b8;">(shown to approver)</span></label>
+        <input id="n-humandesc" placeholder="Please review the order">
+      </div>
+      <div class="form-group">
+        <label>Assignee Group</label>
+        <input id="n-assignee" placeholder="admin">
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-node')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNode()">Add Node</button>
+    </div>
   </div>
 </div>
 
-<!-- Resume Task Modal -->
-<div id="modal-resume" class="modal">
-  <div class="modal-content">
-    <h2>处理人工任务</h2>
-    <div id="task-detail">加载中...</div>
-    <div class="form-group">
-      <label>审批意见 (JSON)</label>
-      <textarea id="resume-comment" rows="3">{"comment":"Approved"}</textarea>
+<!-- ============ MODAL: Add Edge ============ -->
+<div id="modal-edge" class="modal-overlay">
+  <div class="modal" style="max-width:460px;">
+    <h2>Add Connection</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>From</label>
+        <select id="e-from"></select>
+      </div>
+      <div class="form-group">
+        <label>To</label>
+        <select id="e-to"></select>
+      </div>
+    </div>
+    <div class="form-group" id="e-port-group" style="display:none;">
+      <label>Condition Output</label>
+      <select id="e-port">
+        <option value="true">✅ true</option>
+        <option value="false">❌ false</option>
+      </select>
     </div>
     <div class="modal-actions">
-      <button onclick="closeModal('modal-resume')">取消</button>
-      <button class="btn-reject" onclick="resumeTask('reject')">拒绝</button>
-      <button class="btn-approve" onclick="resumeTask('approve')">通过</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-edge')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdge()">Add Connection</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: Instance Detail ============ -->
+<div id="modal-instance" class="modal-overlay">
+  <div class="modal" style="max-width:700px;">
+    <h2>📄 Instance Detail</h2>
+    <div id="instance-detail">Loading...</div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-instance')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: Resume Task ============ -->
+<div id="modal-resume" class="modal-overlay">
+  <div class="modal" style="max-width:520px;">
+    <h2>✋ Handle Task</h2>
+    <div id="task-detail">Loading...</div>
+    <div class="form-group">
+      <label>Result (JSON)</label>
+      <textarea id="resume-data" rows="4" style="font-family:monospace;font-size:0.8rem;">{"approved": true, "comment": ""}</textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-resume')">Cancel</button>
+      <button class="btn btn-danger" onclick="resumeTask('reject')">Reject</button>
+      <button class="btn btn-success" onclick="resumeTask('approve')">Approve</button>
     </div>
   </div>
 </div>
 
 <script>
+// ==================== State ====================
 const API = '';
+let builderNodes = [];
+let builderEdges = [];
+let editingNodeIdx = -1;
+let templates = [];
+let _currentTaskId = '';
 
+// ==================== API ====================
 function api(path, opts) {
-  return fetch(API + path, { headers: {'Content-Type':'application/json'}, ...opts })
-    .then(r => r.json().catch(() => ({})));
+  return fetch(API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts
+  }).then(r => {
+    if (r.status === 204) return {};
+    return r.json().catch(() => ({}));
+  });
 }
 
+// ==================== Navigation ====================
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
@@ -173,82 +414,371 @@ function showPage(name) {
   if (name === 'tasks') loadTasks('pending');
 }
 
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
 
-// Templates
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+}
+
+// ==================== Templates ====================
 function loadTemplates() {
   api('/api/v1/templates').then(data => {
-    const list = document.getElementById('template-list');
-    if (!Array.isArray(data) || data.length === 0) {
-      list.innerHTML = '<tr><td colspan="5" class="empty">暂无模板</td></tr>'; return;
+    templates = Array.isArray(data) ? data : [];
+    const tbody = document.getElementById('template-list');
+    if (templates.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><p>No templates yet. Click "New Template" to create one.</p></td></tr>';
+      return;
     }
-    list.innerHTML = data.map(t => `<tr>
-      <td><strong>${esc(t.name)}</strong></td>
-      <td>${esc(t.description)}</td>
-      <td>${t.nodes ? t.nodes.length : 0}</td>
-      <td>${fmtTime(t.created_at)}</td>
-      <td>
-        <button class="btn-sm btn-primary" onclick="startInstance('${t.id}')">启动</button>
-        <button class="btn-sm" onclick="deleteTemplate('${t.id}')">删除</button>
+    tbody.innerHTML = templates.map(t => `<tr>
+      <td><strong>${esc(t.name)}</strong><br><span style="font-size:0.75rem;color:#94a3b8;">${esc(t.description||'')}</span></td>
+      <td>${(t.nodes||[]).length} nodes</td>
+      <td style="font-size:0.8rem;color:#64748b;">${fmtTime(t.created_at)}</td>
+      <td style="text-align:right;">
+        <button class="btn btn-sm btn-primary" onclick="startInstance('${t.id}')">▶ Run</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${t.id}')">✕</button>
       </td>
     </tr>`).join('');
   });
 }
 
-function showCreateTemplate() {
-  document.getElementById('tmpl-name').value = '';
-  document.getElementById('tmpl-desc').value = '';
-  document.getElementById('tmpl-nodes').value = '[{"id":"step1","type":"code","webhook_url":"http://localhost:9000/step1","description":"Step 1"}]';
-  document.getElementById('tmpl-edges').value = '[{"from":"START","to":"step1"},{"from":"step1","to":"END"}]';
-  openModal('modal-template');
+function deleteTemplate(id) {
+  if (!confirm('Delete this template?')) return;
+  api('/api/v1/templates/' + id, { method: 'DELETE' }).then(() => loadTemplates());
 }
 
-function createTemplate() {
-  const name = document.getElementById('tmpl-name').value.trim();
-  const desc = document.getElementById('tmpl-desc').value.trim();
-  let nodes, edges;
-  try { nodes = JSON.parse(document.getElementById('tmpl-nodes').value); } catch(e) { alert('节点 JSON 格式错误'); return; }
-  try { edges = JSON.parse(document.getElementById('tmpl-edges').value); } catch(e) { alert('连接 JSON 格式错误'); return; }
-  if (!name) { alert('请输入名称'); return; }
+// ==================== Template Builder ====================
+function openBuilder() {
+  builderNodes = [];
+  builderEdges = [];
+  editingNodeIdx = -1;
+  document.getElementById('b-name').value = '';
+  document.getElementById('b-desc').value = '';
+  renderBuilder();
+  openModal('modal-builder');
+}
 
-  api('/api/v1/templates', { method:'POST', body:JSON.stringify({name,description:desc,nodes,edges}) }).then(() => {
-    closeModal('modal-template');
+function renderBuilder() {
+  // Nodes
+  const container = document.getElementById('b-nodes');
+  if (builderNodes.length === 0) {
+    container.innerHTML = '<div class="empty-state" style="padding:16px;"><p style="font-size:0.8rem;">No nodes yet.</p></div>';
+  } else {
+    container.innerHTML = builderNodes.map((n, i) => {
+      const icons = { code: '🔗', llm: '🤖', condition: '🔀', human: '👤' };
+      const labels = { code: 'API Call', llm: 'LLM', condition: 'Condition', human: 'Human' };
+      const desc = n.type === 'code' ? n.webhook_url
+        : n.type === 'llm' ? n.llm_config?.model_name || ''
+        : n.type === 'condition' ? n.expression
+        : n.description;
+      return `<div class="node-card">
+        <div class="node-icon" style="background:${nodeColor(n.type)}22;">${icons[n.type]||'📦'}</div>
+        <div class="node-info">
+          <div class="node-id"><span class="badge badge-${n.type}">${labels[n.type]||n.type}</span> ${esc(n.id)}</div>
+          <div class="node-desc">${esc(trunc(desc||'',50))}</div>
+        </div>
+        <div class="node-actions">
+          <button class="btn btn-xs btn-outline" onclick="editNode(${i})">✎</button>
+          <button class="btn btn-xs btn-danger" onclick="removeNode(${i})">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Edges
+  const edgeContainer = document.getElementById('b-edges');
+  if (builderEdges.length === 0) {
+    edgeContainer.innerHTML = '<div class="empty-state" style="padding:16px;"><p style="font-size:0.8rem;">No connections yet.</p></div>';
+  } else {
+    const allIds = ['START', ...builderNodes.map(n => n.id), 'END'];
+    edgeContainer.innerHTML = builderEdges.map(e => {
+      const isCond = builderNodes.find(n => n.id === e.from && n.type === 'condition');
+      return `<div class="edge-row">
+        <span style="font-weight:500;">${esc(e.from)}</span>
+        <span class="arrow">→</span>
+        ${isCond ? `<span class="cond">${e.output_port||'true'}</span>` : ''}
+        <span style="font-weight:500;">${esc(e.to)}</span>
+        <span style="margin-left:auto;">
+          <button class="btn btn-xs btn-danger" onclick="removeEdge('${e.from}','${e.to}','${e.output_port||''}')">✕</button>
+        </span>
+      </div>`;
+    }).join('');
+  }
+
+  // Flow preview
+  renderFlowPreview();
+}
+
+function renderFlowPreview() {
+  const container = document.getElementById('b-preview');
+  if (builderNodes.length === 0) {
+    container.innerHTML = '<div class="empty-state" style="padding:16px;"><p style="font-size:0.8rem;">Add nodes to see the flow.</p></div>';
+    return;
+  }
+
+  // Build adjacency
+  const adj = {};
+  const condPorts = {};
+  builderEdges.forEach(e => {
+    if (!adj[e.from]) adj[e.from] = [];
+    adj[e.from].push(e);
+    if (e.output_port) {
+      if (!condPorts[e.from]) condPorts[e.from] = {};
+      condPorts[e.from][e.to] = e.output_port;
+    }
+  });
+
+  // Simple BFS from START
+  let html = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;">';
+  const visited = new Set();
+  const queue = ['START'];
+  let first = true;
+  while (queue.length > 0) {
+    const id = queue.shift();
+    if (visited.has(id)) continue;
+    if (!first) {
+      const isCond = !first && builderNodes.find(n => n.id === id && n.type === 'condition');
+      html += `<span class="flow-arrow">→${isCond ? '❓' : ''}</span>`;
+    }
+    first = false;
+
+    if (id === 'START') {
+      html += '<div class="flow-node start">START</div>';
+    } else if (id === 'END') {
+      html += '<div class="flow-node end">END</div>';
+    } else {
+      const n = builderNodes.find(x => x.id === id);
+      if (!n) continue;
+      const icons = { code: '🔗', llm: '🤖', condition: '🔀', human: '👤' };
+      html += `<div class="flow-node" style="background:${nodeColor(n.type)}22;border:1px solid ${nodeColor(n.type)};">${icons[n.type]||'📦'} ${esc(n.id)}</div>`;
+    }
+
+    visited.add(id);
+    if (adj[id]) {
+      adj[id].forEach(e => {
+        if (!visited.has(e.to)) queue.push(e.to);
+      });
+    }
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function nodeColor(type) {
+  const colors = { code: '#3b82f6', llm: '#8b5cf6', condition: '#f59e0b', human: '#ec4899' };
+  return colors[type] || '#64748b';
+}
+
+// ==================== Node CRUD ====================
+function openAddNode() {
+  editingNodeIdx = -1;
+  document.getElementById('node-modal-title').textContent = 'Add Node';
+  document.getElementById('n-id').value = '';
+  document.getElementById('n-type').value = 'code';
+  document.getElementById('n-tag').value = '';
+  document.getElementById('n-url').value = '';
+  document.getElementById('n-provider').value = 'openai';
+  document.getElementById('n-model').value = '';
+  document.getElementById('n-apikey').value = '';
+  document.getElementById('n-baseurl').value = '';
+  document.getElementById('n-sysprompt').value = '';
+  document.getElementById('n-userprompt').value = '';
+  document.getElementById('n-temp').value = '0.7';
+  document.getElementById('n-maxtokens').value = '1024';
+  document.getElementById('n-llmdesc').value = '';
+  document.getElementById('n-expr').value = '';
+  document.getElementById('n-humandesc').value = '';
+  document.getElementById('n-assignee').value = '';
+  document.querySelector('#modal-node .btn-primary').textContent = 'Add Node';
+  onNodeTypeChange();
+  openModal('modal-node');
+}
+
+function editNode(idx) {
+  editingNodeIdx = idx;
+  const n = builderNodes[idx];
+  document.getElementById('node-modal-title').textContent = 'Edit Node';
+  document.getElementById('n-id').value = n.id;
+  document.getElementById('n-type').value = n.type;
+  document.getElementById('n-tag').value = n.tag || '';
+  document.getElementById('n-url').value = n.webhook_url || '';
+  document.getElementById('n-provider').value = n.llm_config?.provider || 'openai';
+  document.getElementById('n-model').value = n.llm_config?.model_name || '';
+  document.getElementById('n-apikey').value = n.llm_config?.api_key_env || '';
+  document.getElementById('n-baseurl').value = n.llm_config?.base_url || '';
+  document.getElementById('n-sysprompt').value = n.llm_config?.system_prompt || '';
+  document.getElementById('n-userprompt').value = n.llm_config?.user_prompt || '';
+  document.getElementById('n-temp').value = n.llm_config?.temperature || 0.7;
+  document.getElementById('n-maxtokens').value = n.llm_config?.max_tokens || 1024;
+  document.getElementById('n-llmdesc').value = n.description || '';
+  document.getElementById('n-expr').value = n.expression || '';
+  document.getElementById('n-humandesc').value = n.description || '';
+  document.getElementById('n-assignee').value = n.assignee_group || '';
+  document.querySelector('#modal-node .btn-primary').textContent = 'Save';
+  onNodeTypeChange();
+  openModal('modal-node');
+}
+
+function onNodeTypeChange() {
+  const type = document.getElementById('n-type').value;
+  document.querySelectorAll('.node-fields').forEach(el => el.style.display = 'none');
+  document.getElementById('n-fields-' + type).style.display = 'block';
+  if (type === 'human') {
+    document.getElementById('n-fields-human').style.display = 'block';
+  }
+}
+
+function saveNode() {
+  const id = document.getElementById('n-id').value.trim();
+  const type = document.getElementById('n-type').value;
+  if (!id) { alert('Node ID is required'); return; }
+
+  const node = { id, type };
+
+  if (type === 'code') {
+    node.tag = document.getElementById('n-tag').value.trim();
+    node.webhook_url = document.getElementById('n-url').value.trim();
+    if (!node.webhook_url) { alert('Webhook URL is required'); return; }
+  } else if (type === 'llm') {
+    node.llm_config = {
+      provider: document.getElementById('n-provider').value,
+      model_name: document.getElementById('n-model').value.trim(),
+      api_key_env: document.getElementById('n-apikey').value.trim(),
+      base_url: document.getElementById('n-baseurl').value.trim(),
+      system_prompt: document.getElementById('n-sysprompt').value.trim(),
+      user_prompt: document.getElementById('n-userprompt').value.trim(),
+      temperature: parseFloat(document.getElementById('n-temp').value) || 0.7,
+      max_tokens: parseInt(document.getElementById('n-maxtokens').value) || 1024,
+    };
+    node.description = document.getElementById('n-llmdesc').value.trim();
+    if (!node.llm_config.model_name) { alert('Model name is required'); return; }
+    if (!node.llm_config.api_key_env) { alert('API Key env is required'); return; }
+  } else if (type === 'condition') {
+    node.expression = document.getElementById('n-expr').value.trim();
+    if (!node.expression) { alert('Expression is required'); return; }
+  } else if (type === 'human') {
+    node.description = document.getElementById('n-humandesc').value.trim();
+    node.assignee_group = document.getElementById('n-assignee').value.trim();
+    if (!node.description) { alert('Description is required'); return; }
+  }
+
+  if (editingNodeIdx >= 0) {
+    builderNodes[editingNodeIdx] = node;
+  } else {
+    builderNodes.push(node);
+  }
+
+  closeModal('modal-node');
+  renderBuilder();
+}
+
+function removeNode(idx) {
+  const id = builderNodes[idx].id;
+  builderNodes.splice(idx, 1);
+  builderEdges = builderEdges.filter(e => e.from !== id && e.to !== id);
+  renderBuilder();
+}
+
+// ==================== Edge CRUD ====================
+function openAddEdge() {
+  const ids = ['START', ...builderNodes.map(n => n.id), 'END'];
+  const fromSel = document.getElementById('e-from');
+  const toSel = document.getElementById('e-to');
+  fromSel.innerHTML = ids.map(id => `<option value="${id}">${id}</option>`).join('');
+  toSel.innerHTML = ids.map(id => `<option value="${id}">${id}</option>`).join('');
+  document.getElementById('e-port-group').style.display = 'none';
+  closeModal('modal-edge');
+  openModal('modal-edge');
+}
+
+function onEdgeFromChange() {
+  const from = document.getElementById('e-from').value;
+  const isCond = builderNodes.find(n => n.id === from && n.type === 'condition');
+  document.getElementById('e-port-group').style.display = isCond ? 'block' : 'none';
+}
+
+function saveEdge() {
+  const from = document.getElementById('e-from').value;
+  const to = document.getElementById('e-to').value;
+  if (from === to) { alert('Cannot connect a node to itself'); return; }
+
+  const isCond = builderNodes.find(n => n.id === from && n.type === 'condition');
+  const port = isCond ? document.getElementById('e-port').value : '';
+
+  // Check duplicate
+  if (builderEdges.find(e => e.from === from && e.to === to && (e.output_port||'') === port)) {
+    alert('This connection already exists');
+    return;
+  }
+
+  builderEdges.push({ from, to, output_port: port });
+  closeModal('modal-edge');
+  renderBuilder();
+}
+
+function removeEdge(from, to, port) {
+  builderEdges = builderEdges.filter(e => !(e.from === from && e.to === to && (e.output_port||'') === port));
+  renderBuilder();
+}
+
+// ==================== Save Template ====================
+function saveTemplate() {
+  const name = document.getElementById('b-name').value.trim();
+  if (!name) { alert('Template name is required'); return; }
+  if (builderNodes.length === 0) { alert('Add at least one node'); return; }
+
+  // Validate edges
+  if (builderEdges.length === 0) { alert('Add at least one connection'); return; }
+
+  api('/api/v1/templates', {
+    method: 'POST',
+    body: JSON.stringify({
+      name,
+      description: document.getElementById('b-desc').value.trim(),
+      nodes: builderNodes,
+      edges: builderEdges.map(e => ({
+        from: e.from,
+        to: e.to,
+        output_port: e.output_port || undefined
+      }))
+    })
+  }).then(() => {
+    closeModal('modal-builder');
     loadTemplates();
   });
 }
 
-function deleteTemplate(id) {
-  if (!confirm('确认删除此模板？')) return;
-  api('/api/v1/templates/' + id, { method:'DELETE' }).then(() => loadTemplates());
-}
-
+// ==================== Start Instance ====================
 function startInstance(tmplId) {
-  const input = prompt('输入初始数据 (JSON，可选):', '{}');
+  const input = prompt('Initial data (JSON, optional):', '{}');
   if (input === null) return;
   let data;
-  try { data = JSON.parse(input || '{}'); } catch(e) { alert('JSON 格式错误'); return; }
-  api(`/api/v1/templates/${tmplId}/instances`, { method:'POST', body:JSON.stringify({input:data}) }).then(r => {
-    alert('实例已启动: ' + (r.id || ''));
-    loadInstances();
+  try { data = JSON.parse(input || '{}'); } catch(e) { alert('Invalid JSON'); return; }
+  api(`/api/v1/templates/${tmplId}/instances`, {
+    method: 'POST',
+    body: JSON.stringify({ input: data })
+  }).then(r => {
+    alert('Instance started: ' + (r.id || '') + '\nStatus: ' + r.status);
     showPage('instances');
   });
 }
 
-// Instances
+// ==================== Instances ====================
 function loadInstances() {
   api('/api/v1/instances').then(data => {
     const list = document.getElementById('instance-list');
     if (!Array.isArray(data) || data.length === 0) {
-      list.innerHTML = '<tr><td colspan="6" class="empty">暂无实例</td></tr>'; return;
+      list.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr>';
+      return;
     }
     list.innerHTML = data.map(i => `<tr>
-      <td><code>${shortId(i.id)}</code></td>
-      <td>${i.template_id}</td>
+      <td><code style="font-size:0.78rem;">${shortId(i.id)}</code></td>
+      <td>${esc(i.template_id)}</td>
       <td><span class="badge badge-${i.status}">${i.status}</span></td>
-      <td>${i.current_node_id || '-'}</td>
-      <td>${fmtTime(i.created_at)}</td>
-      <td><button class="btn-sm" onclick="showInstance('${i.id}')">详情</button></td>
+      <td style="font-size:0.8rem;color:#64748b;">${i.current_node_id || '-'}</td>
+      <td style="font-size:0.8rem;color:#64748b;">${fmtTime(i.created_at)}</td>
+      <td style="text-align:right;"><button class="btn btn-xs btn-outline" onclick="showInstance('${i.id}')">Detail</button></td>
     </tr>`).join('');
   });
 }
@@ -256,72 +786,86 @@ function loadInstances() {
 function showInstance(id) {
   api('/api/v1/instances/' + id).then(i => {
     document.getElementById('instance-detail').innerHTML = `
-      <p><strong>ID:</strong> <code>${i.id}</code></p>
-      <p><strong>状态:</strong> <span class="badge badge-${i.status}">${i.status}</span></p>
-      <p><strong>模板ID:</strong> ${i.template_id}</p>
-      <p><strong>当前节点:</strong> ${i.current_node_id || '-'}</p>
-      ${i.error ? `<p><strong>错误:</strong> <span style="color:#c62828">${esc(i.error)}</span></p>` : ''}
-      <p><strong>节点状态:</strong></p>
-      <div class="json-view">${i.node_states ? JSON.stringify(i.node_states, null, 2) : '{}'}</div>
-      <p><strong>State:</strong></p>
-      <div class="json-view">${JSON.stringify(i.state || {}, null, 2)}</div>
+      <div class="detail-grid">
+        <div><div class="detail-label">ID</div><div class="detail-value"><code>${i.id}</code></div></div>
+        <div><div class="detail-label">Status</div><div class="detail-value"><span class="badge badge-${i.status}">${i.status}</span></div></div>
+        <div><div class="detail-label">Template</div><div class="detail-value">${i.template_id}</div></div>
+        <div><div class="detail-label">Current Node</div><div class="detail-value">${i.current_node_id || '-'}</div></div>
+      </div>
+      ${i.error ? `<div style="background:#fef2f2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;">❌ ${esc(i.error)}</div>` : ''}
+      <div style="margin-top:8px;"><div class="detail-label">State</div><div class="json-box">${JSON.stringify(i.state || {}, null, 2)}</div></div>
+      <div style="margin-top:8px;"><div class="detail-label">Node States</div><div class="json-box">${JSON.stringify(i.node_states || {}, null, 2)}</div></div>
     `;
     openModal('modal-instance');
   });
 }
 
-// Human Tasks
+// ==================== Tasks ====================
 function loadTasks(status) {
   let url = '/api/v1/human-tasks';
   if (status) url += '?status=' + status;
   api(url).then(data => {
     const list = document.getElementById('task-list');
     if (!Array.isArray(data) || data.length === 0) {
-      list.innerHTML = '<tr><td colspan="6" class="empty">暂无任务</td></tr>'; return;
+      list.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No tasks.</p></td></tr>';
+      return;
     }
     list.innerHTML = data.map(t => `<tr>
-      <td><code>${shortId(t.id)}</code></td>
+      <td><code style="font-size:0.78rem;">${shortId(t.id)}</code></td>
       <td>${esc(t.node_description)}</td>
-      <td>${esc(t.assignee_group) || '-'}</td>
+      <td style="font-size:0.8rem;color:#64748b;">${esc(t.assignee_group) || '-'}</td>
       <td><span class="badge badge-${t.status}">${t.status}</span></td>
-      <td>${fmtTime(t.created_at)}</td>
-      <td>${t.status === 'pending' ? `<button class="btn-sm btn-primary" onclick="showResume('${t.id}')">处理</button>` : '-'}</td>
+      <td style="font-size:0.8rem;color:#64748b;">${fmtTime(t.created_at)}</td>
+      <td style="text-align:right;">
+        ${t.status === 'pending' ? `<button class="btn btn-xs btn-primary" onclick="openResume('${t.id}')">Handle</button>` : '<span style="font-size:0.75rem;color:#94a3b8;">Done</span>'}
+      </td>
     </tr>`).join('');
   });
 }
 
-function showResume(id) {
+function openResume(id) {
+  _currentTaskId = id;
   api('/api/v1/human-tasks?status=pending').then(tasks => {
     const task = Array.isArray(tasks) ? tasks.find(t => t.id === id) : null;
-    if (!task) { alert('任务未找到'); return; }
+    if (!task) { alert('Task not found'); return; }
     document.getElementById('task-detail').innerHTML = `
-      <p><strong>节点:</strong> ${esc(task.node_description)}</p>
-      <p><strong>负责人:</strong> ${esc(task.assignee_group) || '-'}</p>
-      <p><strong>输入数据:</strong></p>
-      <div class="json-view">${JSON.stringify(task.input_data || {}, null, 2)}</div>
+      <div class="detail-grid">
+        <div><div class="detail-label">Node</div><div class="detail-value">${esc(task.node_description)}</div></div>
+        <div><div class="detail-label">Assignee</div><div class="detail-value">${esc(task.assignee_group) || '-'}</div></div>
+      </div>
+      <div style="margin-top:8px;margin-bottom:12px;"><div class="detail-label">Input Data</div><div class="json-box">${JSON.stringify(task.input_data || {}, null, 2)}</div></div>
     `;
-    document.getElementById('resume-comment').value = '{"approved":true}';
+    document.getElementById('resume-data').value = '{"approved": true, "comment": ""}';
     openModal('modal-resume');
-    window._currentTaskId = id;
   });
 }
 
 function resumeTask(action) {
-  const id = window._currentTaskId;
   let result;
-  try { result = JSON.parse(document.getElementById('resume-comment').value); } catch(e) { result = {comment: document.getElementById('resume-comment').value}; }
-  api(`/api/v1/human-tasks/${id}/resume`, { method:'POST', body:JSON.stringify({action,result}) }).then(() => {
+  try { result = JSON.parse(document.getElementById('resume-data').value); } catch(e) {
+    result = { comment: document.getElementById('resume-data').value };
+  }
+  api(`/api/v1/human-tasks/${_currentTaskId}/resume`, {
+    method: 'POST',
+    body: JSON.stringify({ action, result })
+  }).then(() => {
     closeModal('modal-resume');
     loadTasks('pending');
   });
 }
 
-// Utils
+// ==================== Utils ====================
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function shortId(id) { return id ? id.substring(0, 12) : '-'; }
+function shortId(id) { return id ? id.substring(0, 10)+'…' : '-'; }
 function fmtTime(t) { return t ? new Date(t).toLocaleString() : '-'; }
+function trunc(s, n) { return s && s.length > n ? s.substring(0, n)+'…' : s; }
 
-// Auto load
+// Bind edge from change
+document.addEventListener('change', function(e) {
+  if (e.target.id === 'e-from') onEdgeFromChange();
+});
+
+// Auto-load
 loadTemplates();
 </script>
 </body>
