@@ -1,10 +1,15 @@
 module github.com/Duliangheng2003/workflow-platform
 
-go 1.22.2
-
-require github.com/cloudwego/eino v0.9.12
+go 1.24.0
 
 require (
+	github.com/cloudwego/eino v0.9.12
+	github.com/go-sql-driver/mysql v1.10.0
+	gopkg.in/yaml.v3 v3.0.1
+)
+
+require (
+	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
@@ -31,5 +36,4 @@ require (
 	golang.org/x/arch v0.11.0 // indirect
 	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1 // indirect
 	golang.org/x/sys v0.29.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

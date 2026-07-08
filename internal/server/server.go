@@ -12,54 +12,53 @@ import (
 	"time"
 
 	"github.com/Duliangheng2003/workflow-platform/internal/api"
+	"github.com/Duliangheng2003/workflow-platform/internal/config"
 	"github.com/Duliangheng2003/workflow-platform/internal/engine"
 	"github.com/Duliangheng2003/workflow-platform/internal/store"
+	"github.com/Duliangheng2003/workflow-platform/internal/store/mysql"
 )
 
 //go:embed static/*.html
 var staticFiles embed.FS
 
-type Config struct {
-	Port    int
-	Timeout time.Duration
-}
+func Run(cfg *config.Config) error {
+	var st store.Store
+	var err error
 
-func DefaultConfig() Config {
-	return Config{
-		Port:    8080,
-		Timeout: 60 * time.Second,
+	if cfg.Database.Host != "" {
+		st, err = mysql.NewStore(cfg.Database)
+		if err != nil {
+			return fmt.Errorf("mysql store: %w", err)
+		}
+		log.Println("Using MySQL storage")
+	} else {
+		st = store.NewMemoryStore()
+		log.Println("Using in-memory storage")
 	}
-}
 
-func Run(cfg Config) error {
-	st := store.NewMemoryStore()
-	eng := engine.New(st)
+	eng := engine.New(st, cfg.LLM)
 	handler := api.NewHandler(st, eng)
 
 	mux := http.NewServeMux()
-
-	// API routes
 	handler.RegisterRoutes(mux)
 
-	// Health check
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	// Serve frontend
 	staticSub, err := fs.Sub(staticFiles, "static")
 	if err != nil {
 		return fmt.Errorf("static sub: %w", err)
 	}
 	mux.Handle("GET /", http.FileServer(http.FS(staticSub)))
 
-	addr := fmt.Sprintf(":%d", cfg.Port)
+	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	srv := &http.Server{
 		Addr:         addr,
 		Handler:      withCORS(mux),
-		ReadTimeout:  cfg.Timeout,
-		WriteTimeout: cfg.Timeout,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 60 * time.Second,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

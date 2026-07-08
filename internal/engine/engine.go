@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudwego/eino/compose"
 
+	"github.com/Duliangheng2003/workflow-platform/internal/config"
 	"github.com/Duliangheng2003/workflow-platform/internal/model"
 	"github.com/Duliangheng2003/workflow-platform/internal/store"
 )
@@ -15,7 +16,8 @@ import (
 // It translates workflow templates into eino compose.Graph instances
 // and manages their lifecycle.
 type Engine struct {
-	store store.Store
+	store       store.Store
+	llmProfiles config.LLMConfig
 
 	mu      sync.RWMutex
 	waiters map[string]chan *resumeSignal // instanceID -> resume channel
@@ -26,10 +28,11 @@ type resumeSignal struct {
 	Action string
 }
 
-func New(s store.Store) *Engine {
+func New(s store.Store, llmCfg config.LLMConfig) *Engine {
 	return &Engine{
-		store:   s,
-		waiters: make(map[string]chan *resumeSignal),
+		store:       s,
+		llmProfiles: llmCfg,
+		waiters:     make(map[string]chan *resumeSignal),
 	}
 }
 

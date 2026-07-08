@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+database:
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: your_password
+  database: workflow_platform
+
+llm:
+  profiles:
+    - name: openai-gpt4o
+      provider: openai
+      model: gpt-4o
+      api_key: sk-your-openai-key
+      base_url: "https://api.openai.com"
+
+    - name: deepseek-chat
+      provider: deepseek
+      model: deepseek-chat
+      api_key: sk-your-deepseek-key
+      base_url: "https://api.deepseek.com"
+
+    # Add more profiles as needed
+    # - name: custom-llama
+    #   provider: openai
+    #   model: llama-3
+    #   api_key: sk-xxx
+    #   base_url: "http://localhost:11434/v1"

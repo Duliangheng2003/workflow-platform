@@ -13,13 +13,12 @@ const (
 )
 
 // LLMConfig defines configuration for an LLM node.
+// API keys and model details are configured server-side in config.yaml
+// under `llm.profiles` — the workflow template only references a profile name.
 type LLMConfig struct {
-	Provider     string  `json:"provider"`      // "openai", "deepseek", etc.
-	ModelName    string  `json:"model_name"`     // e.g. "gpt-4o", "deepseek-chat"
-	APIKeyEnv    string  `json:"api_key_env"`    // env var name holding the API key
-	BaseURL      string  `json:"base_url"`       // API base URL (optional, provider default if empty)
-	SystemPrompt string  `json:"system_prompt"`  // system prompt
-	UserPrompt   string  `json:"user_prompt"`    // template with {state.path.to.value} syntax
+	Profile      string  `json:"profile"`       // references a server-side LLM profile (e.g. "openai-gpt4o")
+	SystemPrompt string  `json:"system_prompt"` // system prompt
+	UserPrompt   string  `json:"user_prompt"`   // template with {state.path.to.value} syntax
 	Temperature  float64 `json:"temperature"`
 	MaxTokens    int     `json:"max_tokens"`
 }

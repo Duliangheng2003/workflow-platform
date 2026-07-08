@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -15,25 +14,26 @@ import (
 )
 
 // llmLambda creates a Lambda that calls an LLM via OpenAI-compatible API.
+// API keys and base URLs are read from the server-side config profiles.
 func (e *Engine) llmLambda(node *model.Node) func(context.Context, map[string]any) (map[string]any, error) {
 	cfg := node.LLMConfig
 	client := &http.Client{Timeout: 60 * time.Second}
 
 	return func(ctx context.Context, state map[string]any) (map[string]any, error) {
-		// Read API key from environment
-		apiKey := os.Getenv(cfg.APIKeyEnv)
-		if apiKey == "" {
-			return nil, fmt.Errorf("API key not found in env: %s", cfg.APIKeyEnv)
+		// Look up the server-side LLM profile
+		profile, err := e.llmProfiles.LookupProfile(cfg.Profile)
+		if err != nil {
+			return nil, fmt.Errorf("llm config: %w", err)
 		}
 
-		// Resolve prompt template with state values
+		// Resolve prompt templates with state values
 		userPrompt := resolveTemplate(cfg.UserPrompt, state)
 		systemPrompt := cfg.SystemPrompt
 		if systemPrompt != "" {
 			systemPrompt = resolveTemplate(systemPrompt, state)
 		}
 
-		// Build the request body (OpenAI-compatible format)
+		// Build request body (OpenAI-compatible format)
 		messages := make([]map[string]any, 0)
 		if systemPrompt != "" {
 			messages = append(messages, map[string]any{
@@ -47,7 +47,7 @@ func (e *Engine) llmLambda(node *model.Node) func(context.Context, map[string]an
 		})
 
 		reqBody := map[string]any{
-			"model":    cfg.ModelName,
+			"model":    profile.Model,
 			"messages": messages,
 		}
 		if cfg.Temperature != 0 {
@@ -59,24 +59,16 @@ func (e *Engine) llmLambda(node *model.Node) func(context.Context, map[string]an
 
 		body, _ := json.Marshal(reqBody)
 
-		// Determine API URL
-		baseURL := cfg.BaseURL
-		if baseURL == "" {
-			switch cfg.Provider {
-			case "deepseek":
-				baseURL = "https://api.deepseek.com"
-			default: // openai
-				baseURL = "https://api.openai.com"
-			}
-		}
-		apiURL := strings.TrimRight(baseURL, "/") + "/v1/chat/completions"
+		// Build API URL
+		baseURL := strings.TrimRight(profile.BaseURL, "/")
+		apiURL := baseURL + "/v1/chat/completions"
 
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
 		if err != nil {
 			return nil, fmt.Errorf("create request: %w", err)
 		}
 		httpReq.Header.Set("Content-Type", "application/json")
-		httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+		httpReq.Header.Set("Authorization", "Bearer "+profile.APIKey)
 
 		resp, err := client.Do(httpReq)
 		if err != nil {
@@ -128,7 +120,6 @@ func resolveTemplate(tmpl string, state map[string]any) string {
 		}
 		b, _ := json.Marshal(val)
 		s := string(b)
-		// If it's a plain string, remove the JSON quotes
 		if strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`) {
 			return s[1 : len(s)-1]
 		}
