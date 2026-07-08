@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os/signal"
@@ -13,6 +15,9 @@ import (
 	"github.com/Duliangheng2003/workflow-platform/internal/engine"
 	"github.com/Duliangheng2003/workflow-platform/internal/store"
 )
+
+//go:embed static/*.html
+var staticFiles embed.FS
 
 type Config struct {
 	Port    int
@@ -32,6 +37,8 @@ func Run(cfg Config) error {
 	handler := api.NewHandler(st, eng)
 
 	mux := http.NewServeMux()
+
+	// API routes
 	handler.RegisterRoutes(mux)
 
 	// Health check
@@ -39,6 +46,13 @@ func Run(cfg Config) error {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok"}`))
 	})
+
+	// Serve frontend
+	staticSub, err := fs.Sub(staticFiles, "static")
+	if err != nil {
+		return fmt.Errorf("static sub: %w", err)
+	}
+	mux.Handle("GET /", http.FileServer(http.FS(staticSub)))
 
 	addr := fmt.Sprintf(":%d", cfg.Port)
 	srv := &http.Server{
@@ -52,8 +66,7 @@ func Run(cfg Config) error {
 	defer stop()
 
 	go func() {
-		log.Printf("Eino Workflow Engine starting on %s", addr)
-		log.Printf("API documentation: http://localhost:%d/health", cfg.Port)
+		log.Printf("Workflow Platform starting on http://localhost%s", addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen error: %v", err)
 		}

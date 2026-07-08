@@ -9,16 +9,34 @@ const (
 	NodeTypeCode      NodeType = "code"
 	NodeTypeCondition NodeType = "condition"
 	NodeTypeHuman     NodeType = "human"
+	NodeTypeLLM       NodeType = "llm"
 )
+
+// LLMConfig defines configuration for an LLM node.
+type LLMConfig struct {
+	Provider     string  `json:"provider"`      // "openai", "deepseek", etc.
+	ModelName    string  `json:"model_name"`     // e.g. "gpt-4o", "deepseek-chat"
+	APIKeyEnv    string  `json:"api_key_env"`    // env var name holding the API key
+	BaseURL      string  `json:"base_url"`       // API base URL (optional, provider default if empty)
+	SystemPrompt string  `json:"system_prompt"`  // system prompt
+	UserPrompt   string  `json:"user_prompt"`    // template with {state.path.to.value} syntax
+	Temperature  float64 `json:"temperature"`
+	MaxTokens    int     `json:"max_tokens"`
+}
 
 // Node defines a single node in a workflow template.
 type Node struct {
-	ID            string   `json:"id"`
-	Type          NodeType `json:"type"`
-	WebhookURL    string   `json:"webhook_url,omitempty"`    // for code node
-	AssigneeGroup string   `json:"assignee_group,omitempty"` // for human node
-	Expression    string   `json:"expression,omitempty"`     // for condition node
-	Description   string   `json:"description,omitempty"`
+	ID            string    `json:"id"`
+	Type          NodeType  `json:"type"`
+	Description   string    `json:"description,omitempty"`
+	// code node fields
+	WebhookURL    string    `json:"webhook_url,omitempty"`
+	// condition node fields
+	Expression    string    `json:"expression,omitempty"`
+	// human node fields
+	AssigneeGroup string    `json:"assignee_group,omitempty"`
+	// llm node fields
+	LLMConfig     *LLMConfig `json:"llm_config,omitempty"`
 }
 
 // Edge defines a connection between two nodes in a workflow template.

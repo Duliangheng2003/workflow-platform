@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workflow Platform</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; color: #333; }
+header { background: #1a1a2e; color: #fff; padding: 16px 32px; display: flex; align-items: center; gap: 32px; }
+header h1 { font-size: 1.2rem; }
+nav { display: flex; gap: 8px; }
+nav a { color: #ccc; text-decoration: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+nav a:hover { background: #16213e; color: #fff; }
+nav a.active { background: #0f3460; color: #fff; }
+main { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+.page { display: none; }
+.page.active { display: block; }
+.card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.card h3 { margin-bottom: 12px; color: #1a1a2e; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+th { background: #fafafa; font-weight: 600; color: #666; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 500; }
+.badge-running { background: #e3f2fd; color: #1565c0; }
+.badge-completed { background: #e8f5e9; color: #2e7d32; }
+.badge-failed { background: #fce4ec; color: #c62828; }
+.badge-paused { background: #fff3e0; color: #e65100; }
+.badge-pending { background: #f3e5f5; color: #6a1b9a; }
+button { padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+.btn-primary { background: #0f3460; color: #fff; }
+.btn-primary:hover { background: #1a5276; }
+.btn-approve { background: #2e7d32; color: #fff; }
+.btn-reject { background: #c62828; color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 4px; color: #555; }
+.form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
+.form-group textarea { font-family: monospace; min-height: 80px; }
+pre { background: #f8f9fa; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; }
+.json-view { background: #f8f9fa; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.82rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+.empty { text-align: center; padding: 40px; color: #999; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; }
+.modal.active { display: flex; align-items: center; justify-content: center; }
+.modal-content { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 700px; max-height: 80vh; overflow-y: auto; }
+.modal-content h2 { margin-bottom: 16px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.node-row { display: grid; grid-template-columns: 1fr 120px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; padding: 8px; background: #fafafa; border-radius: 6px; }
+.edge-row { display: grid; grid-template-columns: 1fr 100px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; padding: 8px; background: #fafafa; border-radius: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚙️ Workflow Platform</h1>
+  <nav>
+    <a onclick="showPage('templates')" class="active" data-page="templates">流程模板</a>
+    <a onclick="showPage('instances')" data-page="instances">运行实例</a>
+    <a onclick="showPage('tasks')" data-page="tasks">人工任务</a>
+  </nav>
+</header>
+
+<main>
+<!-- Templates Page -->
+<div id="page-templates" class="page active">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <h2>流程模板</h2>
+    <button class="btn-primary" onclick="showCreateTemplate()">+ 新建模板</button>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>名称</th><th>描述</th><th>节点数</th><th>创建时间</th><th>操作</th></tr></thead>
+      <tbody id="template-list"><tr><td colspan="5" class="empty">加载中...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Instances Page -->
+<div id="page-instances" class="page">
+  <h2 style="margin-bottom:16px;">运行实例</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>ID</th><th>模板</th><th>状态</th><th>当前节点</th><th>创建时间</th><th>操作</th></tr></thead>
+      <tbody id="instance-list"><tr><td colspan="6" class="empty">加载中...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Tasks Page -->
+<div id="page-tasks" class="page">
+  <h2 style="margin-bottom:16px;">人工任务</h2>
+  <div style="margin-bottom:12px;">
+    <button class="btn-sm btn-primary" onclick="loadTasks('pending')">待处理</button>
+    <button class="btn-sm" onclick="loadTasks('approved')">已通过</button>
+    <button class="btn-sm" onclick="loadTasks('rejected')">已拒绝</button>
+    <button class="btn-sm" onclick="loadTasks('')">全部</button>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>ID</th><th>节点描述</th><th>负责人</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+      <tbody id="task-list"><tr><td colspan="6" class="empty">加载中...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+</main>
+
+<!-- Create Template Modal -->
+<div id="modal-template" class="modal">
+  <div class="modal-content">
+    <h2>新建流程模板</h2>
+    <div class="form-group">
+      <label>名称</label>
+      <input id="tmpl-name" placeholder="my_workflow">
+    </div>
+    <div class="form-group">
+      <label>描述</label>
+      <input id="tmpl-desc" placeholder="A simple review workflow">
+    </div>
+    <div class="form-group">
+      <label>节点 (JSON)</label>
+      <textarea id="tmpl-nodes" rows="6">[{"id":"step1","type":"code","webhook_url":"http://localhost:9000/step1","description":"Step 1"}]</textarea>
+    </div>
+    <div class="form-group">
+      <label>连接 (JSON)</label>
+      <textarea id="tmpl-edges" rows="4">[{"from":"START","to":"step1"},{"from":"step1","to":"END"}]</textarea>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeModal('modal-template')">取消</button>
+      <button class="btn-primary" onclick="createTemplate()">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- Instance Detail Modal -->
+<div id="modal-instance" class="modal">
+  <div class="modal-content">
+    <h2>实例详情</h2>
+    <div id="instance-detail">加载中...</div>
+  </div>
+</div>
+
+<!-- Resume Task Modal -->
+<div id="modal-resume" class="modal">
+  <div class="modal-content">
+    <h2>处理人工任务</h2>
+    <div id="task-detail">加载中...</div>
+    <div class="form-group">
+      <label>审批意见 (JSON)</label>
+      <textarea id="resume-comment" rows="3">{"comment":"Approved"}</textarea>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeModal('modal-resume')">取消</button>
+      <button class="btn-reject" onclick="resumeTask('reject')">拒绝</button>
+      <button class="btn-approve" onclick="resumeTask('approve')">通过</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+
+function api(path, opts) {
+  return fetch(API + path, { headers: {'Content-Type':'application/json'}, ...opts })
+    .then(r => r.json().catch(() => ({})));
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelector(`nav a[data-page="${name}"]`).classList.add('active');
+  if (name === 'templates') loadTemplates();
+  if (name === 'instances') loadInstances();
+  if (name === 'tasks') loadTasks('pending');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+
+// Templates
+function loadTemplates() {
+  api('/api/v1/templates').then(data => {
+    const list = document.getElementById('template-list');
+    if (!Array.isArray(data) || data.length === 0) {
+      list.innerHTML = '<tr><td colspan="5" class="empty">暂无模板</td></tr>'; return;
+    }
+    list.innerHTML = data.map(t => `<tr>
+      <td><strong>${esc(t.name)}</strong></td>
+      <td>${esc(t.description)}</td>
+      <td>${t.nodes ? t.nodes.length : 0}</td>
+      <td>${fmtTime(t.created_at)}</td>
+      <td>
+        <button class="btn-sm btn-primary" onclick="startInstance('${t.id}')">启动</button>
+        <button class="btn-sm" onclick="deleteTemplate('${t.id}')">删除</button>
+      </td>
+    </tr>`).join('');
+  });
+}
+
+function showCreateTemplate() {
+  document.getElementById('tmpl-name').value = '';
+  document.getElementById('tmpl-desc').value = '';
+  document.getElementById('tmpl-nodes').value = '[{"id":"step1","type":"code","webhook_url":"http://localhost:9000/step1","description":"Step 1"}]';
+  document.getElementById('tmpl-edges').value = '[{"from":"START","to":"step1"},{"from":"step1","to":"END"}]';
+  openModal('modal-template');
+}
+
+function createTemplate() {
+  const name = document.getElementById('tmpl-name').value.trim();
+  const desc = document.getElementById('tmpl-desc').value.trim();
+  let nodes, edges;
+  try { nodes = JSON.parse(document.getElementById('tmpl-nodes').value); } catch(e) { alert('节点 JSON 格式错误'); return; }
+  try { edges = JSON.parse(document.getElementById('tmpl-edges').value); } catch(e) { alert('连接 JSON 格式错误'); return; }
+  if (!name) { alert('请输入名称'); return; }
+
+  api('/api/v1/templates', { method:'POST', body:JSON.stringify({name,description:desc,nodes,edges}) }).then(() => {
+    closeModal('modal-template');
+    loadTemplates();
+  });
+}
+
+function deleteTemplate(id) {
+  if (!confirm('确认删除此模板？')) return;
+  api('/api/v1/templates/' + id, { method:'DELETE' }).then(() => loadTemplates());
+}
+
+function startInstance(tmplId) {
+  const input = prompt('输入初始数据 (JSON，可选):', '{}');
+  if (input === null) return;
+  let data;
+  try { data = JSON.parse(input || '{}'); } catch(e) { alert('JSON 格式错误'); return; }
+  api(`/api/v1/templates/${tmplId}/instances`, { method:'POST', body:JSON.stringify({input:data}) }).then(r => {
+    alert('实例已启动: ' + (r.id || ''));
+    loadInstances();
+    showPage('instances');
+  });
+}
+
+// Instances
+function loadInstances() {
+  api('/api/v1/instances').then(data => {
+    const list = document.getElementById('instance-list');
+    if (!Array.isArray(data) || data.length === 0) {
+      list.innerHTML = '<tr><td colspan="6" class="empty">暂无实例</td></tr>'; return;
+    }
+    list.innerHTML = data.map(i => `<tr>
+      <td><code>${shortId(i.id)}</code></td>
+      <td>${i.template_id}</td>
+      <td><span class="badge badge-${i.status}">${i.status}</span></td>
+      <td>${i.current_node_id || '-'}</td>
+      <td>${fmtTime(i.created_at)}</td>
+      <td><button class="btn-sm" onclick="showInstance('${i.id}')">详情</button></td>
+    </tr>`).join('');
+  });
+}
+
+function showInstance(id) {
+  api('/api/v1/instances/' + id).then(i => {
+    document.getElementById('instance-detail').innerHTML = `
+      <p><strong>ID:</strong> <code>${i.id}</code></p>
+      <p><strong>状态:</strong> <span class="badge badge-${i.status}">${i.status}</span></p>
+      <p><strong>模板ID:</strong> ${i.template_id}</p>
+      <p><strong>当前节点:</strong> ${i.current_node_id || '-'}</p>
+      ${i.error ? `<p><strong>错误:</strong> <span style="color:#c62828">${esc(i.error)}</span></p>` : ''}
+      <p><strong>节点状态:</strong></p>
+      <div class="json-view">${i.node_states ? JSON.stringify(i.node_states, null, 2) : '{}'}</div>
+      <p><strong>State:</strong></p>
+      <div class="json-view">${JSON.stringify(i.state || {}, null, 2)}</div>
+    `;
+    openModal('modal-instance');
+  });
+}
+
+// Human Tasks
+function loadTasks(status) {
+  let url = '/api/v1/human-tasks';
+  if (status) url += '?status=' + status;
+  api(url).then(data => {
+    const list = document.getElementById('task-list');
+    if (!Array.isArray(data) || data.length === 0) {
+      list.innerHTML = '<tr><td colspan="6" class="empty">暂无任务</td></tr>'; return;
+    }
+    list.innerHTML = data.map(t => `<tr>
+      <td><code>${shortId(t.id)}</code></td>
+      <td>${esc(t.node_description)}</td>
+      <td>${esc(t.assignee_group) || '-'}</td>
+      <td><span class="badge badge-${t.status}">${t.status}</span></td>
+      <td>${fmtTime(t.created_at)}</td>
+      <td>${t.status === 'pending' ? `<button class="btn-sm btn-primary" onclick="showResume('${t.id}')">处理</button>` : '-'}</td>
+    </tr>`).join('');
+  });
+}
+
+function showResume(id) {
+  api('/api/v1/human-tasks?status=pending').then(tasks => {
+    const task = Array.isArray(tasks) ? tasks.find(t => t.id === id) : null;
+    if (!task) { alert('任务未找到'); return; }
+    document.getElementById('task-detail').innerHTML = `
+      <p><strong>节点:</strong> ${esc(task.node_description)}</p>
+      <p><strong>负责人:</strong> ${esc(task.assignee_group) || '-'}</p>
+      <p><strong>输入数据:</strong></p>
+      <div class="json-view">${JSON.stringify(task.input_data || {}, null, 2)}</div>
+    `;
+    document.getElementById('resume-comment').value = '{"approved":true}';
+    openModal('modal-resume');
+    window._currentTaskId = id;
+  });
+}
+
+function resumeTask(action) {
+  const id = window._currentTaskId;
+  let result;
+  try { result = JSON.parse(document.getElementById('resume-comment').value); } catch(e) { result = {comment: document.getElementById('resume-comment').value}; }
+  api(`/api/v1/human-tasks/${id}/resume`, { method:'POST', body:JSON.stringify({action,result}) }).then(() => {
+    closeModal('modal-resume');
+    loadTasks('pending');
+  });
+}
+
+// Utils
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function shortId(id) { return id ? id.substring(0, 12) : '-'; }
+function fmtTime(t) { return t ? new Date(t).toLocaleString() : '-'; }
+
+// Auto load
+loadTemplates();
+</script>
+</body>
+</html>
