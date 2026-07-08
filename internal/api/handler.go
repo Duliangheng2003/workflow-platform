@@ -4,18 +4,20 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Duliangheng2003/workflow-platform/internal/config"
 	"github.com/Duliangheng2003/workflow-platform/internal/engine"
 	"github.com/Duliangheng2003/workflow-platform/internal/model"
 	"github.com/Duliangheng2003/workflow-platform/internal/store"
 )
 
 type Handler struct {
-	store  store.Store
-	engine *engine.Engine
+	store      store.Store
+	engine     *engine.Engine
+	llmConfig  config.LLMConfig
 }
 
-func NewHandler(s store.Store, e *engine.Engine) *Handler {
-	return &Handler{store: s, engine: e}
+func NewHandler(s store.Store, e *engine.Engine, llmCfg config.LLMConfig) *Handler {
+	return &Handler{store: s, engine: e, llmConfig: llmCfg}
 }
 
 // RegisterRoutes registers all HTTP routes on the given mux.
@@ -34,6 +36,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Human Tasks
 	mux.HandleFunc("GET /api/v1/human-tasks", h.ListHumanTasks)
 	mux.HandleFunc("POST /api/v1/human-tasks/{id}/resume", h.ResumeTask)
+
+	// LLM profiles (server-side config, exposed for frontend dropdown)
+	mux.HandleFunc("GET /api/v1/llm/profiles", h.ListLLMProfiles)
 }
 
 // ——————————————————————————————————————————————————————————————
@@ -173,6 +178,18 @@ func (h *Handler) ResumeTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// ——————————————————————————————————————————————————————————————
+// LLM Profiles
+// ——————————————————————————————————————————————————————————————
+
+func (h *Handler) ListLLMProfiles(w http.ResponseWriter, r *http.Request) {
+	names := make([]string, len(h.llmConfig.Profiles))
+	for i, p := range h.llmConfig.Profiles {
+		names[i] = p.Name
+	}
+	writeJSON(w, http.StatusOK, names)
 }
 
 // ——————————————————————————————————————————————————————————————

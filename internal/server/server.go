@@ -37,7 +37,7 @@ func Run(cfg *config.Config) error {
 	}
 
 	eng := engine.New(st, cfg.LLM)
-	handler := api.NewHandler(st, eng)
+	handler := api.NewHandler(st, eng, cfg.LLM)
 
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)

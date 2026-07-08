@@ -252,29 +252,11 @@ tr:hover { background: #f8fafc; }
 
     <!-- LLM fields -->
     <div id="n-fields-llm" class="node-fields" style="display:none;">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Provider</label>
-          <select id="n-provider">
-            <option value="openai">OpenAI</option>
-            <option value="deepseek">DeepSeek</option>
-            <option value="custom">Custom</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Model</label>
-          <input id="n-model" placeholder="gpt-4o / deepseek-chat">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>API Key Env</label>
-          <input id="n-apikey" placeholder="OPENAI_API_KEY">
-        </div>
-        <div class="form-group">
-          <label>Base URL <span style="font-weight:400;color:#94a3b8;">(optional)</span></label>
-          <input id="n-baseurl" placeholder="https://api.openai.com">
-        </div>
+      <div class="form-group">
+        <label>LLM Profile <span style="font-weight:400;color:#94a3b8;">(configured in server config.yaml)</span></label>
+        <select id="n-profile">
+          <option value="">Loading profiles...</option>
+        </select>
       </div>
       <div class="form-group">
         <label>System Prompt <span style="font-weight:400;color:#94a3b8;">(optional)</span></label>
@@ -284,7 +266,7 @@ tr:hover { background: #f8fafc; }
         <label>User Prompt <span style="font-weight:400;color:#94a3b8;">use {state.path} for variables</span></label>
         <textarea id="n-userprompt" rows="3" placeholder="Analyze the data: {state._global}"></textarea>
       </div>
-      <div class="form-row-3">
+      <div class="form-row">
         <div class="form-group">
           <label>Temperature</label>
           <input id="n-temp" type="number" step="0.1" value="0.7" placeholder="0.7">
@@ -292,10 +274,6 @@ tr:hover { background: #f8fafc; }
         <div class="form-group">
           <label>Max Tokens</label>
           <input id="n-maxtokens" type="number" value="1024" placeholder="1024">
-        </div>
-        <div class="form-group">
-          <label>Description</label>
-          <input id="n-llmdesc" placeholder="What this step does">
         </div>
       </div>
     </div>
@@ -578,15 +556,11 @@ function openAddNode() {
   document.getElementById('n-type').value = 'code';
   document.getElementById('n-tag').value = '';
   document.getElementById('n-url').value = '';
-  document.getElementById('n-provider').value = 'openai';
-  document.getElementById('n-model').value = '';
-  document.getElementById('n-apikey').value = '';
-  document.getElementById('n-baseurl').value = '';
+  document.getElementById('n-profile').value = '';
   document.getElementById('n-sysprompt').value = '';
   document.getElementById('n-userprompt').value = '';
   document.getElementById('n-temp').value = '0.7';
   document.getElementById('n-maxtokens').value = '1024';
-  document.getElementById('n-llmdesc').value = '';
   document.getElementById('n-expr').value = '';
   document.getElementById('n-humandesc').value = '';
   document.getElementById('n-assignee').value = '';
@@ -603,15 +577,11 @@ function editNode(idx) {
   document.getElementById('n-type').value = n.type;
   document.getElementById('n-tag').value = n.tag || '';
   document.getElementById('n-url').value = n.webhook_url || '';
-  document.getElementById('n-provider').value = n.llm_config?.provider || 'openai';
-  document.getElementById('n-model').value = n.llm_config?.model_name || '';
-  document.getElementById('n-apikey').value = n.llm_config?.api_key_env || '';
-  document.getElementById('n-baseurl').value = n.llm_config?.base_url || '';
+  document.getElementById('n-profile').value = n.llm_config?.profile || '';
   document.getElementById('n-sysprompt').value = n.llm_config?.system_prompt || '';
   document.getElementById('n-userprompt').value = n.llm_config?.user_prompt || '';
   document.getElementById('n-temp').value = n.llm_config?.temperature || 0.7;
   document.getElementById('n-maxtokens').value = n.llm_config?.max_tokens || 1024;
-  document.getElementById('n-llmdesc').value = n.description || '';
   document.getElementById('n-expr').value = n.expression || '';
   document.getElementById('n-humandesc').value = n.description || '';
   document.getElementById('n-assignee').value = n.assignee_group || '';
@@ -642,18 +612,13 @@ function saveNode() {
     if (!node.webhook_url) { alert('Webhook URL is required'); return; }
   } else if (type === 'llm') {
     node.llm_config = {
-      provider: document.getElementById('n-provider').value,
-      model_name: document.getElementById('n-model').value.trim(),
-      api_key_env: document.getElementById('n-apikey').value.trim(),
-      base_url: document.getElementById('n-baseurl').value.trim(),
-      system_prompt: document.getElementById('n-sysprompt').value.trim(),
+      profile: document.getElementById('n-profile').value,
       user_prompt: document.getElementById('n-userprompt').value.trim(),
+      system_prompt: document.getElementById('n-sysprompt').value.trim(),
       temperature: parseFloat(document.getElementById('n-temp').value) || 0.7,
       max_tokens: parseInt(document.getElementById('n-maxtokens').value) || 1024,
     };
-    node.description = document.getElementById('n-llmdesc').value.trim();
-    if (!node.llm_config.model_name) { alert('Model name is required'); return; }
-    if (!node.llm_config.api_key_env) { alert('API Key env is required'); return; }
+    if (!node.llm_config.profile) { alert('Please select an LLM profile'); return; }
   } else if (type === 'condition') {
     node.expression = document.getElementById('n-expr').value.trim();
     if (!node.expression) { alert('Expression is required'); return; }
@@ -865,8 +830,19 @@ document.addEventListener('change', function(e) {
   if (e.target.id === 'e-from') onEdgeFromChange();
 });
 
+// ==================== LLM Profiles ====================
+function loadLLMProfiles() {
+  api('/api/v1/llm/profiles').then(names => {
+    if (!Array.isArray(names)) return;
+    const sel = document.getElementById('n-profile');
+    sel.innerHTML = '<option value="">Select a profile...</option>' +
+      names.map(n => `<option value="${n}">${n}</option>`).join('');
+  });
+}
+
 // Auto-load
 loadTemplates();
+loadLLMProfiles();
 </script>
 </body>
 </html>
