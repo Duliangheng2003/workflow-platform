@@ -255,9 +255,13 @@ func (e *Engine) nodeToLambda(tmpl *model.Template, node *model.Node) (*compose.
 		return compose.InvokableLambda(e.llmLambda(node)), nil
 	case model.NodeTypeHuman:
 		return compose.InvokableLambda(e.humanLambda(tmpl, node)), nil
-	default:
-		return nil, fmt.Errorf("unsupported node type: %s", node.Type)
+	case model.NodeTypeAgent:
+		if node.AgentConfig == nil {
+			return nil, fmt.Errorf("agent node %s missing config", node.ID)
+		}
+		return compose.InvokableLambda(e.agentLambda(tmpl, node)), nil
 	}
+	return nil, fmt.Errorf("unsupported node type: %s", node.Type)
 }
 
 func findPredecessor(edges []model.Edge, nodeID string) string {
@@ -267,6 +271,15 @@ func findPredecessor(edges []model.Edge, nodeID string) string {
 		}
 	}
 	return ""
+}
+
+func findNode(nodes []model.Node, id string) *model.Node {
+	for i := range nodes {
+		if nodes[i].ID == id {
+			return &nodes[i]
+		}
+	}
+	return nil
 }
 
 // ——————————————————————————————————————————————————————————————

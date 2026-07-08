@@ -46,6 +46,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 20px 16px; }
 .badge-llm { background: #f3e8ff; color: #6b21a8; }
 .badge-condition { background: #fef3c7; color: #92400e; }
 .badge-human { background: #fce7f3; color: #9d174d; }
+.badge-agent { background: #d1fae5; color: #065f46; }
 
 /* Table */
 table { width: 100%; border-collapse: collapse; }
@@ -232,8 +233,8 @@ tr:hover { background: #f8fafc; }
       <label>Type</label>
       <select id="n-type" onchange="onNodeTypeChange()">
         <option value="code">🔗 Code — Call an API/webhook</option>
-        <option value="llm">🤖 LLM — Ask an AI model</option>
         <option value="condition">🔀 Condition — Branch based on state</option>
+        <option value="agent">🤖 Agent — AI with tool calling</option>
         <option value="human">👤 Human — Wait for approval</option>
       </select>
     </div>
@@ -247,34 +248,6 @@ tr:hover { background: #f8fafc; }
       <div class="form-group">
         <label>Webhook URL</label>
         <input id="n-url" placeholder="https://my-app.com/api/endpoint">
-      </div>
-    </div>
-
-    <!-- LLM fields -->
-    <div id="n-fields-llm" class="node-fields" style="display:none;">
-      <div class="form-group">
-        <label>LLM Profile <span style="font-weight:400;color:#94a3b8;">(configured in server config.yaml)</span></label>
-        <select id="n-profile">
-          <option value="">Loading profiles...</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>System Prompt <span style="font-weight:400;color:#94a3b8;">(optional)</span></label>
-        <textarea id="n-sysprompt" rows="2" placeholder="You are a helpful assistant..."></textarea>
-      </div>
-      <div class="form-group">
-        <label>User Prompt <span style="font-weight:400;color:#94a3b8;">use {state.path} for variables</span></label>
-        <textarea id="n-userprompt" rows="3" placeholder="Analyze the data: {state._global}"></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Temperature</label>
-          <input id="n-temp" type="number" step="0.1" value="0.7" placeholder="0.7">
-        </div>
-        <div class="form-group">
-          <label>Max Tokens</label>
-          <input id="n-maxtokens" type="number" value="1024" placeholder="1024">
-        </div>
       </div>
     </div>
 
@@ -295,6 +268,30 @@ tr:hover { background: #f8fafc; }
       <div class="form-group">
         <label>Assignee Group</label>
         <input id="n-assignee" placeholder="admin">
+      </div>
+    </div>
+
+    <!-- Agent fields -->
+    <div id="n-fields-agent" class="node-fields" style="display:none;">
+      <div class="form-group">
+        <label>LLM Profile</label>
+        <select id="n-agent-profile">
+          <option value="">Loading profiles...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>System Prompt <span style="font-weight:400;color:#94a3b8;">(agent's role/instruction)</span></label>
+        <textarea id="n-agent-prompt" rows="3" placeholder="You are an order processor. Analyze the data and decide what to do..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Tools <span style="font-weight:400;color:#94a3b8;">(node IDs this agent can call, comma-separated)</span></label>
+        <input id="n-agent-tools" placeholder="step1, step2, notify">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Max Turns</label>
+          <input id="n-agent-turns" type="number" value="10" placeholder="10">
+        </div>
       </div>
     </div>
 
@@ -444,7 +441,7 @@ function renderBuilder() {
     container.innerHTML = '<div class="empty-state" style="padding:16px;"><p style="font-size:0.8rem;">No nodes yet.</p></div>';
   } else {
     container.innerHTML = builderNodes.map((n, i) => {
-      const icons = { code: '🔗', llm: '🤖', condition: '🔀', human: '👤' };
+      const icons = { code: '🔗', llm: '🤖', condition: '🔀', human: '👤', agent: '🧠' };
       const labels = { code: 'API Call', llm: 'LLM', condition: 'Condition', human: 'Human' };
       const desc = n.type === 'code' ? n.webhook_url
         : n.type === 'llm' ? n.llm_config?.model_name || ''
@@ -528,7 +525,7 @@ function renderFlowPreview() {
     } else {
       const n = builderNodes.find(x => x.id === id);
       if (!n) continue;
-      const icons = { code: '🔗', llm: '🤖', condition: '🔀', human: '👤' };
+      const icons = { code: '🔗', llm: '🤖', condition: '🔀', human: '👤', agent: '🧠' };
       html += `<div class="flow-node" style="background:${nodeColor(n.type)}22;border:1px solid ${nodeColor(n.type)};">${icons[n.type]||'📦'} ${esc(n.id)}</div>`;
     }
 
@@ -564,6 +561,10 @@ function openAddNode() {
   document.getElementById('n-expr').value = '';
   document.getElementById('n-humandesc').value = '';
   document.getElementById('n-assignee').value = '';
+  document.getElementById(.n-agent-profile.).value = .
+  document.getElementById(.n-agent-prompt.).value = .
+  document.getElementById(.n-agent-tools.).value = .
+  document.getElementById(.n-agent-turns.).value = .10.
   document.querySelector('#modal-node .btn-primary').textContent = 'Add Node';
   onNodeTypeChange();
   openModal('modal-node');
@@ -585,6 +586,14 @@ function editNode(idx) {
   document.getElementById('n-expr').value = n.expression || '';
   document.getElementById('n-humandesc').value = n.description || '';
   document.getElementById('n-assignee').value = n.assignee_group || '';
+  document.getElementById(.n-agent-profile.).value = n.agent_config?.profile || .
+  document.getElementById(.n-agent-prompt.).value = n.agent_config?.system_prompt || .
+  document.getElementById(.n-agent-tools.).value = (n.agent_config?.tools || []).join(.,.)
+  document.getElementById(.n-agent-turns.).value = n.agent_config?.max_turns || 10
+  document.getElementById(.n-agent-profile.).value = .
+  document.getElementById(.n-agent-prompt.).value = .
+  document.getElementById(.n-agent-tools.).value = .
+  document.getElementById(.n-agent-turns.).value = .10.
   document.querySelector('#modal-node .btn-primary').textContent = 'Save';
   onNodeTypeChange();
   openModal('modal-node');
@@ -596,6 +605,9 @@ function onNodeTypeChange() {
   document.getElementById('n-fields-' + type).style.display = 'block';
   if (type === 'human') {
     document.getElementById('n-fields-human').style.display = 'block';
+    if (type === 'agent') {
+      document.getElementById('n-fields-agent').style.display = 'block';
+    }
   }
 }
 
@@ -625,6 +637,10 @@ function saveNode() {
   } else if (type === 'human') {
     node.description = document.getElementById('n-humandesc').value.trim();
     node.assignee_group = document.getElementById('n-assignee').value.trim();
+  document.getElementById(.n-agent-profile.).value = .
+  document.getElementById(.n-agent-prompt.).value = .
+  document.getElementById(.n-agent-tools.).value = .
+  document.getElementById(.n-agent-turns.).value = .10.
     if (!node.description) { alert('Description is required'); return; }
   }
 
@@ -834,9 +850,10 @@ document.addEventListener('change', function(e) {
 function loadLLMProfiles() {
   api('/api/v1/llm/profiles').then(names => {
     if (!Array.isArray(names)) return;
-    const sel = document.getElementById('n-profile');
-    sel.innerHTML = '<option value="">Select a profile...</option>' +
+    const html = '<option value="">Select a profile...</option>' +
       names.map(n => `<option value="${n}">${n}</option>`).join('');
+    document.getElementById('n-profile').innerHTML = html;
+    document.getElementById('n-agent-profile').innerHTML = html;
   });
 }
 

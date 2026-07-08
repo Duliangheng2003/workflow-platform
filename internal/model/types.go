@@ -10,6 +10,7 @@ const (
 	NodeTypeCondition NodeType = "condition"
 	NodeTypeHuman     NodeType = "human"
 	NodeTypeLLM       NodeType = "llm"
+	NodeTypeAgent     NodeType = "agent"
 )
 
 // LLMConfig defines configuration for an LLM node.
@@ -21,6 +22,16 @@ type LLMConfig struct {
 	UserPrompt   string  `json:"user_prompt"`   // template with {state.path.to.value} syntax
 	Temperature  float64 `json:"temperature"`
 	MaxTokens    int     `json:"max_tokens"`
+}
+
+// AgentConfig defines configuration for an agent node.
+// The agent uses eino's ChatModelAgent with a ReAct loop, and can
+// call other nodes in the workflow as tools.
+type AgentConfig struct {
+	Profile      string   `json:"profile"`       // LLM profile name from config.yaml
+	SystemPrompt string   `json:"system_prompt"` // agent role/instruction
+	Tools        []string `json:"tools"`         // node IDs that this agent can call as tools
+	MaxTurns     int      `json:"max_turns"`     // max ReAct iterations (default 10)
 }
 
 // Node defines a single node in a workflow template.
@@ -36,6 +47,8 @@ type Node struct {
 	AssigneeGroup string    `json:"assignee_group,omitempty"`
 	// llm node fields
 	LLMConfig     *LLMConfig `json:"llm_config,omitempty"`
+	// agent node fields
+	AgentConfig   *AgentConfig `json:"agent_config,omitempty"`
 }
 
 // Edge defines a connection between two nodes in a workflow template.
