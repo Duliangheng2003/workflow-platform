@@ -131,11 +131,11 @@ tr:hover{background:#f8fafc}
 <!-- Builder -->
 <div id="page-builder" class="page" style="position:fixed;top:56px;left:0;right:0;bottom:0;z-index:50;background:#fafafa;">
   <div style="display:flex;flex-direction:column;height:100%;">
-    <div style="display:flex;align-items:center;gap:12px;padding:8px 16px;background:#fff;border-bottom:1px solid #e2e8f0;">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:#fff;border-bottom:1px solid #e2e8f0;">
       <button class="btn btn-outline btn-sm" onclick="closeBuilder()">Back</button>
-      <input id="b-name" style="padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.9rem;width:240px;" placeholder="Workflow name">
-      <input id="b-desc" style="flex:1;padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.9rem;" placeholder="Description">
-      <button class="btn btn-success btn-sm" onclick="saveTemplateFromBuilder()">Save</button>
+      <span style="color:#94a3b8;font-size:0.85rem;flex:1;text-align:center;" id="builder-title">New Workflow</span>
+      <button class="btn btn-outline btn-sm" onclick="testRunWorkflow()">Test Run</button>
+      <button class="btn btn-success btn-sm" onclick="openSavePopup()">Save</button>
     </div>
     <div style="flex:1;position:relative;overflow:hidden;">
       <div id="builder-canvas" style="position:absolute;top:0;left:0;right:0;bottom:0;overflow:auto;background:#fafafa;cursor:grab;">
@@ -170,6 +170,19 @@ tr:hover{background:#f8fafc}
           <div class="empty-state" style="padding:16px;"><p style="font-size:0.82rem;">Select a node to edit.</p></div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Save popup -->
+<div id="save-popup" class="modal-overlay">
+  <div class="modal" style="max-width:420px;">
+    <h2>Save Workflow</h2>
+    <div class="form-group"><label>Workflow Name</label><input id="save-name" placeholder="my_workflow"></div>
+    <div class="form-group"><label>Description</label><input id="save-desc" placeholder="What does this workflow do?"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('save-popup')">Cancel</button>
+      <button class="btn btn-success" onclick="saveWorkflow()">Save</button>
     </div>
   </div>
 </div>
@@ -429,11 +442,24 @@ function updateAgent(k,v){var n=builderNodes.find(function(x){return x.id===sele
 function deleteNode(id){builderNodes=builderNodes.filter(function(n){return n.id!==id;});builderEdges=builderEdges.filter(function(e){return e.from!==id&&e.to!==id;});if(selectedNodeId===id)selectedNodeId=null;renderCanvas();showProperties();}
 function changeStartType(v){_startType=v;renderCanvas();showProperties();}
 
-function saveTemplateFromBuilder(){
-  var name=document.getElementById('b-name').value.trim();if(!name){alert('Workflow name is required');return;}
+function openSavePopup(){
+  document.getElementById('save-name').value='';
+  document.getElementById('save-desc').value='';
+  openModal('save-popup');
+}
+
+function saveWorkflow(){
+  var name=document.getElementById('save-name').value.trim();
+  if(!name){alert('Workflow name is required');return;}
   if(builderNodes.length===0){alert('Add at least one node');return;}
+  closeModal('save-popup');
   var edges=builderEdges.map(function(e){return{from:e.from,to:e.to};});
-  api('/api/v1/templates',{method:'POST',body:JSON.stringify({name:name,description:document.getElementById('b-desc').value.trim(),nodes:builderNodes,edges:edges})}).then(function(){showPage('templates');});
+  api('/api/v1/templates',{method:'POST',body:JSON.stringify({name:name,description:document.getElementById('save-desc').value.trim(),nodes:builderNodes,edges:edges})}).then(function(r){alert('Workflow saved!');showPage('templates');});
+}
+
+function testRunWorkflow(){
+  if(builderNodes.length===0){alert('Add at least one node first');return;}
+  alert('Test Run:\nNodes: '+builderNodes.length+'\nConnections: '+builderEdges.length+'\n\nTest run would execute the workflow with sample data.');
 }
 
 // ===== Other Pages =====
