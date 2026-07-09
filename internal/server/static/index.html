@@ -54,13 +54,13 @@ tr:hover{background:#f8fafc}
 .empty-state{text-align:center;padding:48px 20px;color:#94a3b8;font-size:0.9rem}
 
 /* Node base */
-.node{position:absolute;background:#fff;border-radius:10px;min-width:172px;box-shadow:0 2px 8px rgba(0,0,0,0.06);cursor:pointer;user-select:none;border:1.5px solid #e2e8f0;transition:box-shadow 0.2s, border-color 0.2s}
+.node{position:absolute;background:#fff;border-radius:8px;min-width:160px;padding:10px 14px;box-shadow:0 2px 8px rgba(0,0,0,0.06);cursor:pointer;user-select:none;border-width:3px;border-style:solid;border-color:#e2e8f0;transition:box-shadow 0.2s,border-color 0.2s;display:flex;align-items:center;gap:8px}
 .node:hover{box-shadow:0 6px 20px rgba(0,0,0,0.1)}
-.node.selected{border-color:#0f3460;box-shadow:0 0 0 2.5px rgba(15,52,96,0.18)}
-.node-header{display:flex;align-items:center;gap:6px;padding:8px 12px;font-size:0.72rem;font-weight:600;border-radius:9px 9px 0 0;color:#fff;position:relative}
-.node-body{padding:10px 12px 12px;display:flex;align-items:center;justify-content:center;position:relative;min-height:36px}
-.node-name{font-size:0.85rem;font-weight:500;color:#1a1a2e}
-.node-status{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}
+.node.selected{box-shadow:0 0 0 3px rgba(15,52,96,0.18)}
+.node-type-icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:600;color:#fff;flex-shrink:0}
+.node-name{font-size:0.85rem;font-weight:500;color:#1a1a2e;flex:1}
+.node-status-icon{font-size:1rem;line-height:1;flex-shrink:0;width:20px;text-align:center}
+.node-status-circle{display:inline-block;width:18px;height:18px;border-radius:50%;flex-shrink:0;text-align:center;line-height:18px;font-size:11px;font-weight:700;color:#fff}
 /* Node ports - plus icons on sides */
 .node-port{position:absolute;z-index:5;display:flex;align-items:center;justify-content:center;transition:all 0.2s cubic-bezier(0.4,0,0.2,1);opacity:0;transform:scale(0.5)}
 .node:hover .node-port{opacity:1;transform:scale(1)}
@@ -241,23 +241,26 @@ function renderCanvas(){
   var el=document.getElementById('canvas-nodes'),svg=document.getElementById('canvas-svg');
   var pos=calcLayout();
   // START node
-  var html='<div class="node'+(selectedNodeId==='_start'?' selected':'')+'" style="left:'+pos._start.x+'px;top:'+pos._start.y+'px;min-width:120px;" onclick="selectNodeById(\'_start\')" data-id="_start">';
-  html+='<div class="node-header" style="background:#059669;padding:6px 12px;font-size:0.72rem;"><span class="node-status" style="background:rgba(255,255,255,0.5);"></span> START <span style="margin-left:auto;font-weight:400;opacity:0.7;font-size:0.65rem;cursor:pointer;position:relative;" onclick="event.stopPropagation();toggleStartTypePopup()">Switch &#9660;</span></span></div>';
-  html+='<div class="node-body" style="min-height:28px;padding:6px 12px 8px;"><span class="node-name" style="font-size:0.75rem;color:#64748b;">'+_startType+'</span></div>';
+  var html='<div class="node'+(selectedNodeId==='_start'?' selected':'')+'" style="left:'+pos._start.x+'px;top:'+pos._start.y+'px;min-width:140px;border-color:#059669;" onclick="selectNodeById(\'_start\')" data-id="_start">';
+  html+='<span class="node-type-icon" style="background:#059669;"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="#fff" stroke-width="2"><path d="M5 3l12 7-12 7V3z"/></svg></span>';
+  html+='<span class="node-name" style="font-weight:600;">START</span>';
+  html+='<span style="font-size:0.65rem;color:#94a3b8;cursor:pointer;margin-left:auto;" onclick="event.stopPropagation();toggleStartTypePopup()">'+_startType+' &#9660;</span>';
   // Start type popup (right side of START node)
   html+='<div id="start-type-popup" class="add-popup" style="top:0px;left:100%;margin-left:8px;min-width:120px;">'+startTypes.map(function(t){return'<div class="add-popup-item" onclick="event.stopPropagation();changeStartType(\''+t+'\')">'+t+'</div>';}).join('')+'</div>';
   // Output port for START
   html+='<span class="node-port output" style="right:-11px;" onmousedown="event.stopPropagation();event.preventDefault();_connectFrom=\'_start\';"></span>';
   html+='</div>';
   // User nodes
-  var icons={code:'C',agent:'A',condition:'IF',human:'H'};
   var hcolors={code:'#3b82f6',agent:'#8b5cf6',condition:'#f59e0b',human:'#ec4899'};
+  var nodeIcons={code:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="#fff" stroke-width="1.5"><path d="M12 4l-4 12M8 8l-4 4 4 4M12 8l4 4-4 4"/></svg>',agent:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="#fff" stroke-width="1.5"><circle cx="10" cy="6" r="3"/><path d="M4 18c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>',condition:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="#fff" stroke-width="1.5"><path d="M10 2l7 8-7 8-7-8z"/></svg>',human:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="#fff" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 7v6M7 10h6"/></svg>'};
   builderNodes.forEach(function(n){
     var p=pos[n.id];if(!p)return;
     var sel=selectedNodeId===n.id?' selected':'';
-    html+='<div class="node'+sel+'" style="left:'+p.x+'px;top:'+p.y+'px;" data-id="'+n.id+'">';
-    html+='<div class="node-header" style="background:'+(hcolors[n.type]||'#64748b')+'"><span class="node-status" style="background:rgba(255,255,255,0.4);"></span>'+(icons[n.type]||'?')+' '+(n.type).toUpperCase()+'</div>';
-    html+='<div class="node-body"><span class="node-name">'+esc(n.id)+'</span></div>';
+    var color=hcolors[n.type]||'#64748b';
+    html+='<div class="node'+sel+'" style="left:'+p.x+'px;top:'+p.y+'px;border-color:'+color+';" data-id="'+n.id+'">';
+    html+='<span class="node-type-icon" style="background:'+color+';">'+(nodeIcons[n.type]||'')+'</span>';
+    html+='<span class="node-name">'+esc(n.id)+'</span>';
+    html+='<span class="node-status-circle" style="border:2px solid #94a3b8;"></span>';
     html+='<span class="node-port input" title="Connect input"></span>';
     html+='<span class="node-port output" title="Drag to connect" onmousedown="event.stopPropagation();event.preventDefault();_connectFrom=\''+n.id+'\';"></span>';
     html+='</div>';
@@ -305,12 +308,12 @@ function drawConnections(pos){
   builderEdges.forEach(function(e){
     var fp=pos[e.from],tp=pos[e.to];if(!fp||!tp)return;
     var fromNode=document.querySelector('.node[data-id="'+e.from+'"]');
-    var w=e.from==='_start'?120:(fromNode?fromNode.offsetWidth:172);
+    var w=e.from==='_start'?140:(fromNode?fromNode.offsetWidth:172);
     var x1=e.from==='_start'?fp.x+w:fp.x,y1=fp.y+24,x2=tp.x,y2=tp.y+24,cx=(x1+x2)/2;
     paths.push({d:'M'+x1+','+y1+' C'+cx+','+y1+' '+cx+','+y2+' '+x2+','+y2});
   });
   var h='<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10" fill="#94a3b8"/></marker></defs>';
-  paths.forEach(function(p){h+='<path d="'+p.d+'" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrow)"/>';});
+  paths.forEach(function(p){h+='<path d="'+p.d+'" stroke="#94a3b8" stroke-width="2" fill="none" stroke-dasharray="8,4" marker-end="url(#arrow)"/>';});
   svg.innerHTML=h;
 }
 
@@ -329,7 +332,7 @@ function initCanvas(){
   // Ghost node element
   var ghost=document.createElement('div');
   ghost.className='node';ghost.style.position='absolute';ghost.style.display='none';ghost.style.zIndex=100;ghost.style.opacity='0.7';ghost.style.pointerEvents='none';
-  ghost.innerHTML='<div class="node-header" style="background:#64748b;padding:8px 12px;font-size:0.72rem;color:#fff;">+ NODE</div><div class="node-body"><span class="node-name" style="color:#94a3b8;">Click to place</span></div>';
+  ghost.innerHTML='<span class="node-type-icon" style="background:#64748b;"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="#fff" stroke-width="2"><circle cx="10" cy="10" r="7"/><path d="M10 7v6M7 10h6"/></svg></span><span class="node-name" style="color:#94a3b8;">Click to place</span>';
   document.getElementById('canvas-viewport').appendChild(ghost);
 
   c.onmousedown=function(e){
@@ -346,8 +349,8 @@ function initCanvas(){
       var cr=c.getBoundingClientRect();var x=e.clientX-cr.left+c.scrollLeft,y=e.clientY-cr.top+c.scrollTop;
       ghost.style.left=(x-86)+'px';ghost.style.top=(y-20)+'px';ghost.style.display='block';
       // Update ghost appearance based on type
-      var iconsMap={code:'C',agent:'A',condition:'IF',human:'H'};
-      ghost.innerHTML='<div class="node-header" style="background:'+(hcolors[_ghostNode.type]||'#64748b')+';padding:8px 12px;font-size:0.72rem;color:#fff;">'+(iconsMap[_ghostNode.type]||'?')+' '+(_ghostNode.type).toUpperCase()+'</div><div class="node-body"><span class="node-name">'+_ghostNode.id+'</span></div>';
+      var gicons={'code':'<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="#fff" stroke-width="1.5"><path d="M12 4l-4 12M8 8l-4 4 4 4M12 8l4 4-4 4"/></svg>','agent':'<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="#fff" stroke-width="1.5"><circle cx="10" cy="6" r="3"/><path d="M4 18c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>','condition':'<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="#fff" stroke-width="1.5"><path d="M10 2l7 8-7 8-7-8z"/></svg>','human':'<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="#fff" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 7v6M7 10h6"/></svg>'};
+      ghost.innerHTML='<div class="node" style="padding:8px 12px;display:flex;align-items:center;gap:8px;border:3px solid '+(hcolors[_ghostNode.type]||'#64748b')+';"><span class="node-type-icon" style="background:'+(hcolors[_ghostNode.type]||'#64748b')+';">'+(gicons[_ghostNode.type]||'')+'</span><span class="node-name">'+_ghostNode.id+'</span><span class="node-status-circle" style="border:2px solid #94a3b8;"></span></div>';
       return;
     }
     if(d.pan){c.scrollLeft=d.sl-(e.clientX-d.sx);c.scrollTop=d.st-(e.clientY-d.sy);return;}
@@ -383,7 +386,7 @@ function initCanvas(){
     var src=document.querySelector('.node[data-id="'+_connectFrom+'"]');
     if(!src){cl.innerHTML='';return;}
     var sr=src.getBoundingClientRect();
-    var w=_connectFrom==='_start'?120:src.offsetWidth;
+    var w=_connectFrom==='_start'?140:src.offsetWidth;
     var x1=sr.left-cr.left+c.scrollLeft+w,y1=sr.top-cr.top+c.scrollTop+24;
     var x2=e.clientX-cr.left+c.scrollLeft,y2=e.clientY-cr.top+c.scrollTop;
     cl.innerHTML='<path d="M'+x1+','+y1+' C'+x1+','+((y1+y2)/2)+' '+x2+','+((y1+y2)/2)+' '+x2+','+y2+'" stroke="#0f3460" stroke-width="2.5" fill="none" stroke-dasharray="6,4" marker-end="url(#arrow)" opacity="0.8"/>';
@@ -470,8 +473,131 @@ function saveWorkflow(){
 
 function testRunWorkflow(){
   if(builderNodes.length===0){alert('Add at least one node first');return;}
-  alert('Test Run:\nNodes: '+builderNodes.length+'\nConnections: '+builderEdges.length+'\n\nTest run would execute the workflow with sample data.');
+  // Reset all node statuses
+  _testResults={};
+  _testRunning=true;
+  _testLog=[];
+  showTestPanel('Running workflow...');
+  // Run the workflow step by step
+  runTestStep('_start',0);
 }
+
+var _testResults={},_testRunning=false,_testLog=[];
+var _testStep=0;
+
+function runTestStep(nodeId,index){
+  if(!_testRunning)return;
+  // Find next nodes to execute
+  var nextEdges=builderEdges.filter(function(e){return e.from===nodeId;});
+  if(nextEdges.length===0&&nodeId!=='_start'){
+    _testRunning=false;
+    showTestPanel('Workflow completed successfully!');
+    return;
+  }
+  // Process each next node
+  var nodesToProcess=[];
+  nextEdges.forEach(function(e){
+    var targetNode=builderNodes.find(function(n){return n.id===e.to;});
+    if(targetNode)nodesToProcess.push(targetNode);
+  });
+  if(nodesToProcess.length===0&&nodeId!=='_start'){
+    _testRunning=false;
+    showTestPanel('Workflow completed successfully!');
+    return;
+  }
+  // Process one node at a time
+  _testStep++;
+  var node=nodesToProcess[0];
+  if(!node){
+    _testRunning=false;
+    showTestPanel('Workflow completed successfully!');
+    return;
+  }
+  // Update status to running (blue)
+  updateNodeStatus(node.id,'running');
+  // Simulate execution with timeout
+  setTimeout(function(){
+    var success=Math.random()>0.2; // 80% success rate for simulation
+    if(success){
+      _testResults[node.id]='success';
+      updateNodeStatus(node.id,'success');
+      _testLog.push(node.id+': OK');
+      // Continue to next node
+      runTestStep(node.id,_testStep);
+    }else{
+      _testResults[node.id]='failed';
+      updateNodeStatus(node.id,'failed');
+      _testLog.push(node.id+': FAILED');
+      _testRunning=false;
+      showTestPanel('Workflow failed at node: '+node.id);
+    }
+  },800);
+}
+
+function updateNodeStatus(id,status){
+  var icons={running:'<span class="node-status-circle" style="background:#3b82f6;"></span>',success:'<span class="node-status-circle" style="background:#059669;">&#10003;</span>',failed:'<span class="node-status-circle" style="background:#dc2626;">&#10007;</span>'};
+  var el=document.getElementById('canvas-nodes');
+  if(el){
+    var node=el.querySelector('.node[data-id="'+id+'"]')||document.querySelector('.node[data-id="'+id+'"]');
+    if(node){
+      var icon=node.querySelector('.node-status-circle');
+      if(icon)icon.outerHTML=icons[status]||'<span class="node-status-circle" style="border:2px solid #94a3b8;"></span>';
+    }
+  }
+  // Highlight connection lines for running status
+  var svg=document.getElementById('canvas-svg');
+  if(svg&&status==='running'){
+    // Animate the outgoing connections
+    var paths=svg.querySelectorAll('path');
+    paths.forEach(function(p){p.style.stroke='#94a3b8';p.style.strokeWidth='2';});
+    builderEdges.filter(function(e){return e.from===id;}).forEach(function(e){
+      var pos=calcLayout();
+      var fp=pos[e.from],tp=pos[e.to];
+      if(fp&&tp){
+        // Find the path for this edge and highlight it
+        svg.querySelectorAll('path').forEach(function(p){
+          if(p.getAttribute('d')&&p.getAttribute('d').indexOf('M'+fp.x)!==-1){
+            p.style.stroke='#0f3460';p.style.strokeWidth='3';
+            p.style.animation='flow 1s linear infinite';
+          }
+        });
+      }
+    });
+  }
+}
+
+function showTestPanel(msg){
+  // Show result in a floating panel on the right side
+  var panel=document.getElementById('test-result');
+  if(!panel){
+    panel=document.createElement('div');
+    panel.id='test-result';
+    panel.style.cssText='position:absolute;top:0;right:0;bottom:0;width:280px;z-index:20;background:#fff;border-left:1px solid #e2e8f0;display:flex;flex-direction:column;box-shadow:-4px 0 12px rgba(0,0,0,0.08);animation:slidein 0.25s ease;';
+    panel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #e2e8f0;"><span style="font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;">Test Result</span><button class="btn btn-xs btn-outline" onclick="this.parentElement.parentElement.remove()">Close</button></div><div id="test-result-body" style="padding:14px;flex:1;overflow-y:auto;font-size:0.85rem;"></div>';
+    document.querySelector('#builder-right').parentElement.appendChild(panel);
+  }
+  var body=document.getElementById('test-result-body');
+  if(!body)return;
+  var isError=msg.indexOf('failed')>=0||msg.indexOf('FAILED')>=0;
+  var icon=isError?'<span style="color:#dc2626;font-size:1.5rem;">&#10007;</span>':'<span style="color:#059669;font-size:1.5rem;">&#10003;</span>';
+  var color=isError?'#dc2626':'#059669';
+  body.innerHTML='<div style="text-align:center;padding:20px 0;">'+icon+'</div><div style="text-align:center;font-weight:600;color:'+color+';margin-bottom:16px;">'+esc(msg)+'</div>';
+  if(_testLog.length>0){
+    body.innerHTML+='<div style="font-size:0.75rem;font-weight:600;color:#64748b;margin-bottom:8px;text-transform:uppercase;">Execution Log</div>';
+    body.innerHTML+='<div style="background:#f8fafc;border-radius:6px;padding:10px;font-family:monospace;font-size:0.78rem;">';
+    _testLog.forEach(function(l){
+      var c=l.indexOf('FAILED')>=0?'#dc2626':'#059669';
+      body.innerHTML+='<div style="color:'+c+';margin-bottom:4px;">'+esc(l)+'</div>';
+    });
+    body.innerHTML+='</div>';
+  }
+  body.innerHTML+='<div style="margin-top:16px;padding:10px;background:#f8fafc;border-radius:6px;font-size:0.78rem;color:#64748b;"><strong>Note:</strong> Test run uses simulated execution. In production, actual API calls will be made.</div>';
+}
+
+// Add CSS animation for flow
+var style=document.createElement('style');
+style.textContent='@keyframes flow{0%{stroke-dashoffset:20}100%{stroke-dashoffset:0}}';
+document.head.appendChild(style);
 
 // ===== Other Pages =====
 function loadTemplates(){api('/api/v1/templates').then(function(d){templates=Array.isArray(d)?d:[];var t=document.getElementById('template-list');if(templates.length===0){t.innerHTML='<tr><td colspan="4" class="empty-state"><p>No templates yet.</p></td></tr>';return;}t.innerHTML=templates.map(function(x){return'<tr><td><strong>'+esc(x.name)+'</strong><br><span style="font-size:0.75rem;color:#94a3b8;">'+esc(x.description||'')+'</span></td><td>'+(x.nodes||[]).length+' nodes</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.created_at)+'</td><td style="text-align:right;"><button class="btn btn-sm btn-primary" onclick="startInstance(\''+x.id+'\')">Run</button> <button class="btn btn-sm btn-danger" onclick="deleteTemplate(\''+x.id+'\')">Delete</button></td></tr>';}).join('');});}
