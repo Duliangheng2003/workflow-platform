@@ -63,6 +63,32 @@ tr:hover { background: #f8fafc; }
 .empty-state { text-align: center; padding: 48px 20px; color: #94a3b8; }
 .empty-state p { font-size: 0.9rem; }
 </style>
+.floating-panel { position:absolute; top:0; bottom:0; z-index:10; transition:transform 0.25s ease; background:#f8fafc; border:1px solid #e2e8f0; display:flex; flex-direction:column; }
+.floating-panel.left { left:0; border-radius:0 8px 8px 0; border-left:none; width:180px; }
+.floating-panel.right { right:0; border-radius:8px 0 0 8px; border-right:none; width:260px; }
+.floating-panel.collapsed { transform:translateX(-100%); }
+.floating-panel.right.collapsed { transform:translateX(100%); }
+.panel-tab { position:absolute; top:50%; transform:translateY(-50%); z-index:11; cursor:pointer; background:#f8fafc; border:1px solid #e2e8f0; padding:8px 4px; font-size:0.72rem; font-weight:600; color:#64748b; writing-mode:vertical-lr; letter-spacing:2px; border-radius:0 6px 6px 0; user-select:none; }
+.panel-tab:hover { background:#e2e8f0; }
+.panel-tab.left-tab { left:0; display:none; }
+.panel-tab.right-tab { right:0; display:none; }
+.floating-panel.left.collapsed ~ .panel-tab.left-tab { display:flex; align-items:center; justify-content:center; }
+.floating-panel.right.collapsed ~ .panel-tab.right-tab { display:flex; align-items:center; justify-content:center; }
+
+.palette-item { background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:8px 10px; margin-bottom:4px; cursor:pointer; font-size:0.82rem; display:flex; align-items:center; gap:6px; }
+.palette-item:hover { border-color:#94a3b8; }
+.type-badge { padding:1px 6px; border-radius:3px; font-size:0.7rem; font-weight:600; flex-shrink:0; }
+.canvas-node { position:absolute; background:#fff; border:2px solid #e2e8f0; border-radius:8px; min-width:140px; box-shadow:0 2px 6px rgba(0,0,0,0.06); cursor:pointer; transition:box-shadow 0.15s; }
+.canvas-node:hover { box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+.canvas-node.selected { border-color:#0f3460; box-shadow:0 0 0 3px rgba(15,52,96,0.12); }
+.canvas-node .node-header { display:flex; justify-content:space-between; align-items:center; padding:6px 10px; border-bottom:1px solid #f1f5f9; font-size:0.7rem; font-weight:600; border-radius:6px 6px 0 0; }
+.canvas-node .node-body { padding:8px 10px; font-size:0.85rem; font-weight:500; }
+.canvas-node .node-ports { display:flex; justify-content:space-between; padding:0 10px 6px; }
+.canvas-node .port { width:14px; height:14px; border-radius:50%; border:2px solid #94a3b8; background:#fff; cursor:crosshair; }
+.canvas-node .port:hover { background:#0f3460; border-color:#0f3460; }
+.canvas-node .port.output { margin-left:auto; }
+.canvas-node .port.input { margin-right:auto; }
+
 </head>
 <body>
 
@@ -135,32 +161,33 @@ tr:hover { background: #f8fafc; }
       <button class="btn btn-success btn-sm" onclick="saveTemplateFromBuilder()">Save</button>
     </div>
 
-    <div style="display:flex;gap:0;flex:1;overflow:hidden;border:1px solid #e2e8f0;border-radius:8px;background:#fff;">
+    <div style="flex:1;position:relative;overflow:hidden;border:1px solid #e2e8f0;border-radius:8px;background:#fff;">
 
-      <!-- Left panel -->
-      <div id="builder-left" style="width:160px;border-right:1px solid #e2e8f0;background:#f8fafc;display:flex;flex-direction:column;overflow:hidden;transition:width 0.2s;">
+      <!-- Left floating panel -->
+      <div id="builder-left" class="floating-panel left">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid #e2e8f0;">
           <span style="font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;">Nodes</span>
           <button class="btn btn-xs btn-outline" onclick="toggleLeft()" style="font-size:0.7rem;">&laquo;</button>
         </div>
         <div style="padding:8px;flex:1;overflow-y:auto;">
-          <div class="palette-item" data-type="code" onclick="addNodeFromPalette('code')">
+          <div class="palette-item" onclick="addNodeFromPalette('code')">
             <span class="type-badge" style="background:#dbeafe;color:#1d4ed8;">CODE</span> API Call
           </div>
-          <div class="palette-item" data-type="agent" onclick="addNodeFromPalette('agent')">
+          <div class="palette-item" onclick="addNodeFromPalette('agent')">
             <span class="type-badge" style="background:#d1fae5;color:#065f46;">AGENT</span> AI Agent
           </div>
-          <div class="palette-item" data-type="condition" onclick="addNodeFromPalette('condition')">
+          <div class="palette-item" onclick="addNodeFromPalette('condition')">
             <span class="type-badge" style="background:#fef3c7;color:#92400e;">COND</span> Condition
           </div>
-          <div class="palette-item" data-type="human" onclick="addNodeFromPalette('human')">
+          <div class="palette-item" onclick="addNodeFromPalette('human')">
             <span class="type-badge" style="background:#fce7f3;color:#9d174d;">HUMAN</span> Approval
           </div>
         </div>
       </div>
+      <div class="panel-tab left-tab" onclick="toggleLeft()">NODES</div>
 
-      <!-- Canvas -->
-      <div id="builder-canvas" style="flex:1;position:relative;overflow:auto;background:#fafafa;">
+      <!-- Canvas (full width) -->
+      <div id="builder-canvas" style="position:absolute;top:0;left:0;right:0;bottom:0;overflow:auto;background:#fafafa;">
         <svg id="canvas-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;">
           <defs>
             <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
@@ -174,8 +201,8 @@ tr:hover { background: #f8fafc; }
         </div>
       </div>
 
-      <!-- Right panel -->
-      <div id="builder-right" style="width:260px;border-left:1px solid #e2e8f0;background:#f8fafc;display:flex;flex-direction:column;overflow:hidden;transition:width 0.2s;">
+      <!-- Right floating panel -->
+      <div id="builder-right" class="floating-panel right">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid #e2e8f0;">
           <span style="font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;">Properties</span>
           <button class="btn btn-xs btn-outline" onclick="toggleRight()" style="font-size:0.7rem;">&raquo;</button>
@@ -184,6 +211,7 @@ tr:hover { background: #f8fafc; }
           <div class="empty-state" style="padding:16px;"><p style="font-size:0.82rem;">Select a node on the canvas to edit its properties.</p></div>
         </div>
       </div>
+      <div class="panel-tab right-tab" onclick="toggleRight()">PROPS</div>
     </div>
 
     <!-- Status bar -->
@@ -224,21 +252,7 @@ tr:hover { background: #f8fafc; }
 
 </main>
 
-<style>
-.palette-item { background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:8px 10px; margin-bottom:4px; cursor:pointer; font-size:0.82rem; display:flex; align-items:center; gap:6px; }
-.palette-item:hover { border-color:#94a3b8; }
-.type-badge { padding:1px 6px; border-radius:3px; font-size:0.7rem; font-weight:600; flex-shrink:0; }
-.canvas-node { position:absolute; background:#fff; border:2px solid #e2e8f0; border-radius:8px; min-width:140px; box-shadow:0 2px 6px rgba(0,0,0,0.06); cursor:pointer; transition:box-shadow 0.15s; }
-.canvas-node:hover { box-shadow:0 4px 12px rgba(0,0,0,0.1); }
-.canvas-node.selected { border-color:#0f3460; box-shadow:0 0 0 3px rgba(15,52,96,0.12); }
-.canvas-node .node-header { display:flex; justify-content:space-between; align-items:center; padding:6px 10px; border-bottom:1px solid #f1f5f9; font-size:0.7rem; font-weight:600; border-radius:6px 6px 0 0; }
-.canvas-node .node-body { padding:8px 10px; font-size:0.85rem; font-weight:500; }
-.canvas-node .node-ports { display:flex; justify-content:space-between; padding:0 10px 6px; }
-.canvas-node .port { width:14px; height:14px; border-radius:50%; border:2px solid #94a3b8; background:#fff; cursor:crosshair; }
-.canvas-node .port:hover { background:#0f3460; border-color:#0f3460; }
-.canvas-node .port.output { margin-left:auto; }
-.canvas-node .port.input { margin-right:auto; }
-</style>
+
 
 <script>
 const API = '';
@@ -303,13 +317,11 @@ function closeBuilder() {
 }
 
 function toggleLeft() {
-  const panel = document.getElementById('builder-left');
-  panel.style.width = panel.style.width === '0px' ? '160px' : '0px';
+  document.getElementById('builder-left').classList.toggle('collapsed');
 }
 
 function toggleRight() {
-  const panel = document.getElementById('builder-right');
-  panel.style.width = panel.style.width === '0px' ? '260px' : '0px';
+  document.getElementById('builder-right').classList.toggle('collapsed');
 }
 
 function addNodeFromPalette(type) {
