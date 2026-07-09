@@ -544,25 +544,27 @@ function updateNodeStatus(id,status){
       if(icon)icon.outerHTML=icons[status]||'<span class="node-status-circle" style="border:2px solid #94a3b8;"></span>';
     }
   }
-  // Highlight connection lines for running status
+  // Highlight connection lines - animate only when source node is running
   var svg=document.getElementById('canvas-svg');
-  if(svg&&status==='running'){
-    // Animate the outgoing connections
+  if(svg){
+    // Reset all paths to default static style
     var paths=svg.querySelectorAll('path');
-    paths.forEach(function(p){p.style.stroke='#94a3b8';p.style.strokeWidth='2';});
-    builderEdges.filter(function(e){return e.from===id;}).forEach(function(e){
-      var pos=calcLayout();
-      var fp=pos[e.from],tp=pos[e.to];
-      if(fp&&tp){
-        // Find the path for this edge and highlight it
-        svg.querySelectorAll('path').forEach(function(p){
-          if(p.getAttribute('d')&&p.getAttribute('d').indexOf('M'+fp.x)!==-1){
-            p.style.stroke='#0f3460';p.style.strokeWidth='3';
-            p.style.animation='flow 1s linear infinite';
-          }
-        });
-      }
-    });
+    paths.forEach(function(p){p.style.stroke='#94a3b8';p.style.strokeWidth='2';p.style.animation='none';});
+    if(status==='running'){
+      // Animate the incoming connections to this node
+      builderEdges.filter(function(e){return e.to===id;}).forEach(function(e){
+        var pos=calcLayout();
+        var fp=pos[e.from],tp=pos[e.to];
+        if(fp&&tp){
+          svg.querySelectorAll('path').forEach(function(p){
+            if(p.getAttribute('d')&&p.getAttribute('d').indexOf('M'+fp.x)!==-1){
+              p.style.stroke='#0f3460';p.style.strokeWidth='3';
+              p.style.animation='flow 1s linear infinite';
+            }
+          });
+        }
+      });
+    }
   }
 }
 
