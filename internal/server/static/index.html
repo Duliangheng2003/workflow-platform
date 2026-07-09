@@ -5,93 +5,82 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Workflow Platform</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; color: #1a1a2e; font-size: 14px; }
-header { background: #1a1a2e; color: #fff; padding: 14px 28px; display: flex; align-items: center; gap: 24px; }
-header h1 { font-size: 1.1rem; font-weight: 600; }
-nav { display: flex; gap: 4px; }
-nav a { color: #94a3b8; text-decoration: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
-nav a:hover { background: #1e293b; color: #e2e8f0; }
-nav a.active { background: #0f3460; color: #fff; }
-main { max-width: 1100px; margin: 0 auto; padding: 20px 16px; }
-.page { display: none; }
-.page.active { display: block; }
-.card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.card-header h3 { font-size: 1rem; font-weight: 600; }
-.btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 500; }
-.btn-primary { background: #0f3460; color: #fff; }
-.btn-primary:hover { background: #1a5276; }
-.btn-success { background: #059669; color: #fff; }
-.btn-danger { background: #dc2626; color: #fff; }
-.btn-outline { background: #fff; color: #475569; border: 1px solid #cbd5e1; }
-.btn-outline:hover { background: #f8fafc; border-color: #94a3b8; }
-.btn-sm { padding: 4px 10px; font-size: 0.78rem; }
-.btn-xs { padding: 2px 8px; font-size: 0.75rem; }
-.badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 500; }
-.badge-running { background: #dbeafe; color: #1d4ed8; }
-.badge-completed { background: #d1fae5; color: #065f46; }
-.badge-failed { background: #fee2e2; color: #991b1b; }
-.badge-paused { background: #fef3c7; color: #92400e; }
-.badge-pending { background: #f3e8ff; color: #6b21a8; }
-.badge-approved { background: #d1fae5; color: #065f46; }
-.badge-rejected { background: #fee2e2; color: #991b1b; }
-.badge-code { background: #dbeafe; color: #1d4ed8; }
-.badge-condition { background: #fef3c7; color: #92400e; }
-.badge-human { background: #fce7f3; color: #9d174d; }
-.badge-agent { background: #d1fae5; color: #065f46; }
-table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
-th { background: #f8fafc; font-weight: 600; color: #64748b; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
-td { font-size: 0.85rem; }
-tr:hover { background: #f8fafc; }
-.form-group { margin-bottom: 14px; }
-.form-group label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #475569; }
-.form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.85rem; font-family: inherit; background: #fff; }
-.form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #0f3460; box-shadow: 0 0 0 3px rgba(15,52,96,0.1); }
-.form-group textarea { font-family: 'SF Mono', 'Monaco', monospace; min-height: 60px; font-size: 0.8rem; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; }
-.modal-overlay.active { display: flex; align-items: center; justify-content: center; }
-.modal { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 640px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-.modal h2 { font-size: 1.1rem; margin-bottom: 16px; }
-.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
-.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.detail-label { font-size: 0.78rem; color: #64748b; }
-.detail-value { font-size: 0.85rem; margin-bottom: 8px; }
-.json-box { background: #1e293b; color: #e2e8f0; padding: 12px 16px; border-radius: 8px; font-family: 'SF Mono', 'Monaco', monospace; font-size: 0.78rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto; }
-.empty-state { text-align: center; padding: 48px 20px; color: #94a3b8; }
-.empty-state p { font-size: 0.9rem; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,sans-serif;background:#f5f5f5;color:#1a1a2e;font-size:14px}
+header{background:#1a1a2e;color:#fff;padding:14px 28px;display:flex;align-items:center;gap:24px}
+header h1{font-size:1.1rem;font-weight:600}
+nav{display:flex;gap:4px}
+nav a{color:#94a3b8;text-decoration:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.85rem}
+nav a:hover{background:#1e293b;color:#e2e8f0}
+nav a.active{background:#0f3460;color:#fff}
+main{max-width:1100px;margin:0 auto;padding:20px 16px}
+.page{display:none}
+.page.active{display:block}
+.card{background:#fff;border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.07)}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.card-header h3{font-size:1rem;font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;font-size:0.82rem;font-weight:500}
+.btn-primary{background:#0f3460;color:#fff}
+.btn-success{background:#059669;color:#fff}
+.btn-danger{background:#dc2626;color:#fff}
+.btn-outline{background:#fff;color:#475569;border:1px solid #cbd5e1}
+.btn-sm{padding:4px 10px;font-size:0.78rem}
+.btn-xs{padding:2px 8px;font-size:0.75rem}
+.badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:0.75rem;font-weight:500}
+.badge-running{background:#dbeafe;color:#1d4ed8}
+.badge-completed{background:#d1fae5;color:#065f46}
+.badge-failed{background:#fee2e2;color:#991b1b}
+.badge-paused{background:#fef3c7;color:#92400e}
+.badge-pending{background:#f3e8ff;color:#6b21a8}
+.badge-approved{background:#d1fae5;color:#065f46}
+.badge-rejected{background:#fee2e2;color:#991b1b}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #f1f5f9}
+th{background:#f8fafc;font-weight:600;color:#64748b;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px}
+td{font-size:0.85rem}
+tr:hover{background:#f8fafc}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:0.8rem;font-weight:600;margin-bottom:4px;color:#475569}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.85rem;font-family:inherit;background:#fff}
+.form-group textarea{font-family:monospace;min-height:60px;font-size:0.8rem}
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:100}
+.modal-overlay.active{display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:12px;padding:24px;width:90%;max-width:640px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid #f1f5f9}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.detail-label{font-size:0.78rem;color:#64748b}
+.detail-value{font-size:0.85rem;margin-bottom:8px}
+.json-box{background:#1e293b;color:#e2e8f0;padding:12px 16px;border-radius:8px;font-family:monospace;font-size:0.78rem;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:300px}
+.empty-state{text-align:center;padding:48px 20px;color:#94a3b8;font-size:0.9rem}
+/* Builder panels */
+.floating-panel{position:absolute;top:0;bottom:0;z-index:20;background:#f8fafc;border:1px solid #e2e8f0;display:flex;flex-direction:column;transition:transform 0.25s}
+.floating-panel.left{left:0;border-radius:0 8px 8px 0;border-left:none;width:180px}
+.floating-panel.right{right:0;border-radius:8px 0 0 8px;border-right:none;width:260px}
+.floating-panel.collapsed{transform:translateX(-100%)}
+.floating-panel.right.collapsed{transform:translateX(100%)}
+.panel-tab{position:absolute;top:50%;transform:translateY(-50%);z-index:21;cursor:pointer;background:#f8fafc;border:1px solid #e2e8f0;padding:8px 4px;font-size:0.72rem;font-weight:600;color:#64748b;writing-mode:vertical-lr;letter-spacing:2px;border-radius:0 6px 6px 0;user-select:none}
+.panel-tab:hover{background:#e2e8f0}
+.panel-tab.left-tab{left:0;display:none}
+.panel-tab.right-tab{right:0;display:none}
+.floating-panel.left.collapsed~.panel-tab.left-tab{display:flex;align-items:center}
+.floating-panel.right.collapsed~.panel-tab.right-tab{display:flex;align-items:center}
+.palette-item{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;margin-bottom:4px;cursor:pointer;font-size:0.82rem;display:flex;align-items:center;gap:6px;user-select:none}
+.palette-item:hover{border-color:#94a3b8}
+.type-badge{padding:1px 6px;border-radius:3px;font-size:0.7rem;font-weight:600;flex-shrink:0}
+/* Canvas nodes */
+.canvas-node{position:absolute;background:#fff;border:2px solid #e2e8f0;border-radius:8px;min-width:140px;box-shadow:0 2px 6px rgba(0,0,0,0.06);cursor:move;user-select:none}
+.canvas-node:hover{box-shadow:0 4px 12px rgba(0,0,0,0.1)}
+.canvas-node.selected{border-color:#0f3460;box-shadow:0 0 0 3px rgba(15,52,96,0.12)}
+.canvas-node .node-header{display:flex;align-items:center;padding:6px 10px;border-bottom:1px solid #f1f5f9;font-size:0.7rem;font-weight:600;border-radius:6px 6px 0 0}
+.canvas-node .node-body{padding:8px 10px;font-size:0.85rem;font-weight:500}
+.canvas-node .node-ports{display:flex;justify-content:space-between;padding:0 10px 6px}
+.canvas-node .port{width:14px;height:14px;border-radius:50%;border:2px solid #94a3b8;background:#fff;cursor:crosshair}
+.canvas-node .port:hover{background:#0f3460;border-color:#0f3460}
+.canvas-node .port.output{margin-left:auto}
+.canvas-node .port.input{margin-right:auto}
 </style>
-.floating-panel { position:absolute; top:0; bottom:0; z-index:10; transition:transform 0.25s ease; background:#f8fafc; border:1px solid #e2e8f0; display:flex; flex-direction:column; }
-.floating-panel.left { left:0; border-radius:0 8px 8px 0; border-left:none; width:180px; }
-.floating-panel.right { right:0; border-radius:8px 0 0 8px; border-right:none; width:260px; }
-.floating-panel.collapsed { transform:translateX(-100%); }
-.floating-panel.right.collapsed { transform:translateX(100%); }
-.panel-tab { position:absolute; top:50%; transform:translateY(-50%); z-index:11; cursor:pointer; background:#f8fafc; border:1px solid #e2e8f0; padding:8px 4px; font-size:0.72rem; font-weight:600; color:#64748b; writing-mode:vertical-lr; letter-spacing:2px; border-radius:0 6px 6px 0; user-select:none; }
-.panel-tab:hover { background:#e2e8f0; }
-.panel-tab.left-tab { left:0; display:none; }
-.panel-tab.right-tab { right:0; display:none; }
-.floating-panel.left.collapsed ~ .panel-tab.left-tab { display:flex; align-items:center; justify-content:center; }
-.floating-panel.right.collapsed ~ .panel-tab.right-tab { display:flex; align-items:center; justify-content:center; }
-
-.palette-item { background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:8px 10px; margin-bottom:4px; cursor:pointer; font-size:0.82rem; display:flex; align-items:center; gap:6px; }
-.palette-item:hover { border-color:#94a3b8; }
-.type-badge { padding:1px 6px; border-radius:3px; font-size:0.7rem; font-weight:600; flex-shrink:0; }
-.canvas-node { position:absolute; background:#fff; border:2px solid #e2e8f0; border-radius:8px; min-width:140px; box-shadow:0 2px 6px rgba(0,0,0,0.06); cursor:pointer; transition:box-shadow 0.15s; }
-.canvas-node:hover { box-shadow:0 4px 12px rgba(0,0,0,0.1); }
-.canvas-node.selected { border-color:#0f3460; box-shadow:0 0 0 3px rgba(15,52,96,0.12); }
-.canvas-node .node-header { display:flex; justify-content:space-between; align-items:center; padding:6px 10px; border-bottom:1px solid #f1f5f9; font-size:0.7rem; font-weight:600; border-radius:6px 6px 0 0; }
-.canvas-node .node-body { padding:8px 10px; font-size:0.85rem; font-weight:500; }
-.canvas-node .node-ports { display:flex; justify-content:space-between; padding:0 10px 6px; }
-.canvas-node .port { width:14px; height:14px; border-radius:50%; border:2px solid #94a3b8; background:#fff; cursor:crosshair; }
-.canvas-node .port:hover { background:#0f3460; border-color:#0f3460; }
-.canvas-node .port.output { margin-left:auto; }
-.canvas-node .port.input { margin-right:auto; }
-
 </head>
 <body>
-
 <header>
   <h1>Workflow Platform</h1>
   <nav>
@@ -100,37 +89,19 @@ tr:hover { background: #f8fafc; }
     <a onclick="showPage('tasks')" data-page="tasks">Tasks</a>
   </nav>
 </header>
-
 <main>
-
-<!-- ============ TEMPLATES PAGE ============ -->
 <div id="page-templates" class="page active">
   <div class="card">
-    <div class="card-header">
-      <h3>Workflow Templates</h3>
-      <button class="btn btn-primary" onclick="openBuilder()">+ New Template</button>
-    </div>
-    <table>
-      <thead><tr><th>Name</th><th>Nodes</th><th>Created</th><th></th></tr></thead>
-      <tbody id="template-list"><tr><td colspan="4" class="empty-state"><p>No templates yet. Click "New Template" to create one.</p></td></tr></tbody>
-    </table>
+    <div class="card-header"><h3>Workflow Templates</h3><button class="btn btn-primary" onclick="openBuilder()">+ New Template</button></div>
+    <table><thead><tr><th>Name</th><th>Nodes</th><th>Created</th><th></th></tr></thead><tbody id="template-list"><tr><td colspan="4" class="empty-state"><p>No templates yet.</p></td></tr></tbody></table>
   </div>
 </div>
-
-<!-- ============ INSTANCES PAGE ============ -->
 <div id="page-instances" class="page">
   <div class="card">
-    <div class="card-header">
-      <h3>Running Instances</h3>
-    </div>
-    <table>
-      <thead><tr><th>ID</th><th>Template</th><th>Status</th><th>Node</th><th>Time</th><th></th></tr></thead>
-      <tbody id="instance-list"><tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr></tbody>
-    </table>
+    <div class="card-header"><h3>Running Instances</h3></div>
+    <table><thead><tr><th>ID</th><th>Template</th><th>Status</th><th>Node</th><th>Time</th><th></th></tr></thead><tbody id="instance-list"><tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr></tbody></table>
   </div>
 </div>
-
-<!-- ============ TASKS PAGE ============ -->
 <div id="page-tasks" class="page">
   <div class="card">
     <div class="card-header">
@@ -142,106 +113,74 @@ tr:hover { background: #f8fafc; }
         <button class="btn btn-sm btn-outline" onclick="loadTasks('rejected')">Rejected</button>
       </div>
     </div>
-    <table>
-      <thead><tr><th>Task</th><th>Node</th><th>Assignee</th><th>Status</th><th>Time</th><th></th></tr></thead>
-      <tbody id="task-list"><tr><td colspan="6" class="empty-state"><p>No tasks.</p></td></tr></tbody>
-    </table>
+    <table><thead><tr><th>Task</th><th>Node</th><th>Assignee</th><th>Status</th><th>Time</th><th></th></tr></thead><tbody id="task-list"><tr><td colspan="6" class="empty-state"><p>No tasks.</p></td></tr></tbody></table>
   </div>
 </div>
+</main>
 
-<!-- ============ BUILDER PAGE ============ -->
-<div id="page-builder" class="page">
-  <div style="display:flex;flex-direction:column;height:calc(100vh - 100px);">
-
-    <!-- Top bar -->
-    <div style="display:flex;align-items:center;gap:12px;padding:8px 0;margin-bottom:8px;">
+<!-- Builder -->
+<div id="page-builder" class="page" style="position:fixed;top:56px;left:0;right:0;bottom:0;z-index:50;background:#f5f5f5;">
+  <div style="display:flex;flex-direction:column;height:100%;">
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 16px;">
       <button class="btn btn-outline btn-sm" onclick="closeBuilder()">Back</button>
       <input id="b-name" style="flex:1;padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.9rem;" placeholder="Template name">
-      <input id="b-desc" style="flex:1;padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.9rem;" placeholder="Description (optional)">
+      <input id="b-desc" style="flex:1;padding:6px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.9rem;" placeholder="Description">
       <button class="btn btn-success btn-sm" onclick="saveTemplateFromBuilder()">Save</button>
     </div>
-
-    <div style="flex:1;position:relative;overflow:hidden;border:1px solid #e2e8f0;border-radius:8px;background:#fff;">
-
-      <!-- Left floating panel -->
+    <div style="flex:1;position:relative;overflow:hidden;margin:0 16px 8px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;">
       <div id="builder-left" class="floating-panel left">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid #e2e8f0;">
           <span style="font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;">Nodes</span>
           <button class="btn btn-xs btn-outline" onclick="toggleLeft()" style="font-size:0.7rem;">&laquo;</button>
         </div>
         <div style="padding:8px;flex:1;overflow-y:auto;">
-          <div class="palette-item" onclick="addNodeFromPalette('code')">
-            <span class="type-badge" style="background:#dbeafe;color:#1d4ed8;">CODE</span> API Call
-          </div>
-          <div class="palette-item" onclick="addNodeFromPalette('agent')">
-            <span class="type-badge" style="background:#d1fae5;color:#065f46;">AGENT</span> AI Agent
-          </div>
-          <div class="palette-item" onclick="addNodeFromPalette('condition')">
-            <span class="type-badge" style="background:#fef3c7;color:#92400e;">COND</span> Condition
-          </div>
-          <div class="palette-item" onclick="addNodeFromPalette('human')">
-            <span class="type-badge" style="background:#fce7f3;color:#9d174d;">HUMAN</span> Approval
-          </div>
+          <div class="palette-item" onclick="addNode('code')"><span class="type-badge" style="background:#dbeafe;color:#1d4ed8;">CODE</span> API Call</div>
+          <div class="palette-item" onclick="addNode('agent')"><span class="type-badge" style="background:#d1fae5;color:#065f46;">AGENT</span> AI Agent</div>
+          <div class="palette-item" onclick="addNode('condition')"><span class="type-badge" style="background:#fef3c7;color:#92400e;">COND</span> Condition</div>
+          <div class="palette-item" onclick="addNode('human')"><span class="type-badge" style="background:#fce7f3;color:#9d174d;">HUMAN</span> Approval</div>
         </div>
       </div>
       <div class="panel-tab left-tab" onclick="toggleLeft()">NODES</div>
-
-      <!-- Canvas (full width) -->
-      <div id="builder-canvas" style="position:absolute;top:0;left:0;right:0;bottom:0;overflow:auto;background:#fafafa;">
-        <svg id="canvas-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;">
-          <defs>
-            <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-              <path d="M0,0 L10,5 L0,10" fill="#94a3b8"/>
-            </marker>
-          </defs>
-        </svg>
-        <div id="canvas-nodes" style="position:relative;z-index:2;min-height:600px;"></div>
-        <div id="canvas-empty" class="empty-state" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
-          <p>Click a node type from the left panel to add it to the canvas.</p>
+      <div id="builder-canvas" style="position:absolute;top:0;left:0;right:0;bottom:0;overflow:auto;background:#fafafa;cursor:grab;">
+        <div id="canvas-viewport" style="position:relative;width:5000px;height:5000px;">
+          <svg id="canvas-svg" style="position:absolute;top:0;left:0;width:5000px;height:5000px;pointer-events:none;z-index:1;">
+            <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10" fill="#94a3b8"/></marker></defs>
+          </svg>
+          <div id="canvas-nodes" style="position:relative;z-index:2;"></div>
+          <div id="canvas-empty" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#94a3b8;padding:48px 20px;font-size:0.9rem;">Click a node type from the left panel to add it to the canvas.</div>
         </div>
       </div>
-
-      <!-- Right floating panel -->
       <div id="builder-right" class="floating-panel right">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid #e2e8f0;">
           <span style="font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;">Properties</span>
           <button class="btn btn-xs btn-outline" onclick="toggleRight()" style="font-size:0.7rem;">&raquo;</button>
         </div>
         <div id="node-properties" style="padding:10px;flex:1;overflow-y:auto;font-size:0.85rem;">
-          <div class="empty-state" style="padding:16px;"><p style="font-size:0.82rem;">Select a node on the canvas to edit its properties.</p></div>
+          <div class="empty-state" style="padding:16px;"><p style="font-size:0.82rem;">Select a node to edit.</p></div>
         </div>
       </div>
       <div class="panel-tab right-tab" onclick="toggleRight()">PROPS</div>
     </div>
-
-    <!-- Status bar -->
-    <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:0.72rem;color:#94a3b8;">
-      <span>Click a node to select and edit. Click output port then input port to connect.</span>
+    <div style="display:flex;justify-content:space-between;padding:0 16px 8px;font-size:0.72rem;color:#94a3b8;">
+      <span>Drag empty area to pan. Drag nodes to move. Click output port then input port to connect.</span>
       <span id="builder-stats">0 nodes, 0 connections</span>
     </div>
   </div>
 </div>
 
-<!-- ============ MODAL: Instance Detail ============ -->
+<!-- Modals -->
 <div id="modal-instance" class="modal-overlay">
   <div class="modal" style="max-width:700px;">
     <h2>Instance Detail</h2>
     <div id="instance-detail">Loading...</div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeModal('modal-instance')">Close</button>
-    </div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-instance')">Close</button></div>
   </div>
 </div>
-
-<!-- ============ MODAL: Resume Task ============ -->
 <div id="modal-resume" class="modal-overlay">
   <div class="modal" style="max-width:520px;">
     <h2>Handle Task</h2>
     <div id="task-detail">Loading...</div>
-    <div class="form-group">
-      <label>Result (JSON)</label>
-      <textarea id="resume-data" rows="4" style="font-family:monospace;font-size:0.8rem;">{"approved": true, "comment": ""}</textarea>
-    </div>
+    <div class="form-group"><label>Result (JSON)</label><textarea id="resume-data" rows="4" style="font-family:monospace;font-size:0.8rem;">{"approved":true,"comment":""}</textarea></div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('modal-resume')">Cancel</button>
       <button class="btn btn-danger" onclick="resumeTask('reject')">Reject</button>
@@ -250,435 +189,258 @@ tr:hover { background: #f8fafc; }
   </div>
 </div>
 
-</main>
-
-
-
 <script>
-const API = '';
-let builderNodes = [];
-let builderEdges = [];
-let selectedNodeId = null;
-let connectFromNode = null;
-let templates = [];
-let _currentTaskId = '';
+var API='';
+var builderNodes=[], builderEdges=[], selectedNodeId=null, nodePositions={};
+var templates=[], _currentTaskId='';
+var _canvasInited=false, _dragData={}, _connectFrom=null;
 
-function api(path, opts) {
-  return fetch(API + path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...opts
-  }).then(r => {
-    if (r.status === 204) return {};
-    return r.json().catch(() => ({}));
-  });
+function api(p,o){return fetch(API+p,{headers:{'Content-Type':'application/json'},...o}).then(function(r){return r.status===204?{}:r.json().catch(function(){return{};});});}
+
+function showPage(n){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('nav a').forEach(function(a){a.classList.remove('active');});
+  var el=document.getElementById('page-'+n);if(el)el.classList.add('active');
+  var ln=document.querySelector('nav a[data-page="'+n+'"]');if(ln)ln.classList.add('active');
+  if(n==='templates')loadTemplates();if(n==='instances')loadInstances();if(n==='tasks')loadTasks('pending');
 }
+function closeModal(id){document.getElementById(id).classList.remove('active');}
+function openModal(id){document.getElementById(id).classList.add('active');}
 
-function showPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  const link = document.querySelector('nav a[data-page="' + name + '"]');
-  if (link) link.classList.add('active');
-  if (name === 'templates') loadTemplates();
-  if (name === 'instances') loadInstances();
-  if (name === 'tasks') loadTasks('pending');
-}
-
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-
-// ==================== Builder ====================
-function openBuilder() {
-  // Default debugging nodes
-  builderNodes = [
-    {id: 'echo', type: 'code', webhook_url: 'https://httpbin.org/post', description: 'Echo input for testing'},
-    {id: 'check_ok', type: 'condition', expression: 'state.echo.json.ok == true'},
-    {id: 'approve', type: 'human', description: 'Approve the result', assignee_group: 'admin'},
-    {id: 'done', type: 'code', webhook_url: 'https://httpbin.org/post', description: 'Final step'},
-  ];
-  builderEdges = [
-    {from: 'START', to: 'echo'},
-    {from: 'echo', to: 'check_ok'},
-    {from: 'check_ok', to: 'approve', output_port: 'true'},
-    {from: 'check_ok', to: 'done', output_port: 'false'},
-    {from: 'approve', to: 'done'},
-    {from: 'done', to: 'END'},
-  ];
-  selectedNodeId = null;
-  connectFromNode = null;
-  document.getElementById('b-name').value = '';
-  document.getElementById('b-desc').value = '';
+// ===== Builder =====
+function openBuilder(){
+  nodePositions={}; builderNodes=[]; builderEdges=[]; selectedNodeId=null; _canvasInited=false;
+  // Add default nodes for testing
+  builderNodes.push({id:'step1',type:'code',webhook_url:'https://httpbin.org/post',description:'First step'});
+  builderNodes.push({id:'step2',type:'condition',expression:'state.step1.json.ok == true'});
+  builderNodes.push({id:'step3',type:'human',description:'Approve',assignee_group:'admin'});
+  builderEdges.push({from:'step1',to:'step2'});
+  builderEdges.push({from:'step2',to:'step3',output_port:'true'});
+  document.getElementById('b-name').value=''; document.getElementById('b-desc').value='';
   renderCanvas();
   showPage('builder');
+  setTimeout(initCanvas,100);
+  // Center view on nodes
+  setTimeout(function(){
+    var c=document.getElementById('builder-canvas');
+    if(!c||builderNodes.length===0)return;
+    var pos=calcLayout(),minX=Infinity,minY=Infinity,maxX=0,maxY=0;
+    Object.keys(pos).forEach(function(id){var p=pos[id];if(p.x<minX)minX=p.x;if(p.y<minY)minY=p.y;if(p.x+140>maxX)maxX=p.x+140;if(p.y+52>maxY)maxY=p.y+52;});
+    if(minX===Infinity)return;
+    var cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+    c.scrollLeft=Math.max(0,cx-c.clientWidth/2);
+    c.scrollTop=Math.max(0,cy-c.clientHeight/2);
+  },200);
 }
 
-function closeBuilder() {
-  showPage('templates');
-}
+function closeBuilder(){showPage('templates');}
+function toggleLeft(){document.getElementById('builder-left').classList.toggle('collapsed');}
+function toggleRight(){document.getElementById('builder-right').classList.toggle('collapsed');}
 
-function toggleLeft() {
-  document.getElementById('builder-left').classList.toggle('collapsed');
-}
-
-function toggleRight() {
-  document.getElementById('builder-right').classList.toggle('collapsed');
-}
-
-function addNodeFromPalette(type) {
-  const count = builderNodes.filter(n => n.type === type).length + 1;
-  const node = {id: type + '_' + count, type: type};
-  if (type === 'code') node.webhook_url = 'https://httpbin.org/post';
-  if (type === 'condition') node.expression = 'state._global.status == ok';
-  if (type === 'human') { node.description = 'Review and approve'; node.assignee_group = 'admin'; }
-  if (type === 'agent') node.agent_config = {profile: '', system_prompt: 'You are a helpful assistant.', tools: [], max_turns: 10};
+function addNode(type){
+  var n=builderNodes.filter(function(x){return x.type===type;}).length+1;
+  var node={id:type+'_'+n,type:type};
+  if(type==='code')node.webhook_url='https://httpbin.org/post';
+  if(type==='condition')node.expression='state._global.status == ok';
+  if(type==='human'){node.description='Review and approve';node.assignee_group='admin';}
+  if(type==='agent')node.agent_config={profile:'',system_prompt:'You are a helpful assistant.',tools:[],max_turns:10};
   builderNodes.push(node);
-  selectedNodeId = node.id;
+  selectedNodeId=node.id;
   renderCanvas();
   showProperties();
+  setTimeout(function(){
+    var p=nodePositions[node.id];
+    if(p){var c=document.getElementById('builder-canvas');if(c){c.scrollLeft=Math.max(0,p.x-c.clientWidth/2+70);c.scrollTop=Math.max(0,p.y-c.clientHeight/2+26);}}
+  },100);
 }
 
-function renderCanvas() {
-  const container = document.getElementById('canvas-nodes');
-  const empty = document.getElementById('canvas-empty');
-  const svg = document.getElementById('canvas-svg');
-  const stats = document.getElementById('builder-stats');
-
-  empty.style.display = builderNodes.length === 0 ? 'block' : 'none';
-
-  // Calculate layout
-  const positions = calculateLayout(builderNodes, builderEdges);
-  if (Object.keys(positions).length === 0) {
-    container.innerHTML = '';
-    svg.innerHTML = '';
-    stats.textContent = '0 nodes, 0 connections';
-    return;
-  }
-
-  // Render nodes
-  const icons = {code: 'CODE', agent: 'AGENT', condition: 'COND', human: 'HUMAN'};
-  const colors = {code: '#3b82f6', agent: '#10b981', condition: '#f59e0b', human: '#ec4899'};
-  const bgColors = {code: '#dbeafe', agent: '#d1fae5', condition: '#fef3c7', human: '#fce7f3'};
-  const textColors = {code: '#1d4ed8', agent: '#065f46', condition: '#92400e', human: '#9d174d'};
-
-  let html = '';
-  // START node
-  html += '<div class="canvas-node" style="left:' + (positions._start.x - 35) + 'px;top:' + (positions._start.y - 16) + 'px;min-width:70px;background:#e0e7ff;border-color:#3730a3;cursor:default;">';
-  html += '<div class="node-body" style="text-align:center;font-size:0.8rem;color:#3730a3;font-weight:600;">START</div></div>';
-
-  builderNodes.forEach(n => {
-    const pos = positions[n.id];
-    if (!pos) return;
-    const sel = selectedNodeId === n.id ? ' selected' : '';
-    const color = colors[n.type] || '#64748b';
-    const bg = bgColors[n.type] || '#f1f5f9';
-    const tc = textColors[n.type] || '#64748b';
-
-    html += '<div class="canvas-node' + sel + '" style="left:' + pos.x + 'px;top:' + pos.y + 'px;border-color:' + (sel ? '#0f3460' : color) + ';" onclick="selectNode(\'' + n.id + '\')" data-id="' + n.id + '">';
-    html += '<div class="node-header" style="background:' + bg + ';color:' + tc + ';">' + (icons[n.type] || 'NODE') + '</div>';
-    html += '<div class="node-body">' + esc(n.id) + '</div>';
-    html += '<div class="node-ports">';
-    html += '<div class="port input" onclick="event.stopPropagation();connectPort(\'' + n.id + '\',\'input\')"></div>';
-    html += '<div class="port output" onclick="event.stopPropagation();connectPort(\'' + n.id + '\',\'output\')"></div>';
-    html += '</div></div>';
+function renderCanvas(){
+  var el=document.getElementById('canvas-nodes'),empty=document.getElementById('canvas-empty'),svg=document.getElementById('canvas-svg');
+  document.getElementById('builder-stats').textContent=builderNodes.length+' nodes, '+builderEdges.length+' connections';
+  empty.style.display=builderNodes.length===0?'block':'none';
+  var pos=calcLayout();
+  if(Object.keys(pos).length===0){el.innerHTML='';svg.innerHTML='';return;}
+  var html='',icons={code:'CODE',agent:'AGENT',condition:'COND',human:'HUMAN'};
+  var colors={code:'#3b82f6',agent:'#10b981',condition:'#f59e0b',human:'#ec4899'};
+  var bgs={code:'#dbeafe',agent:'#d1fae5',condition:'#fef3c7',human:'#fce7f3'};
+  var tcs={code:'#1d4ed8',agent:'#065f46',condition:'#92400e',human:'#9d174d'};
+  builderNodes.forEach(function(n){
+    var p=pos[n.id];if(!p)return;
+    var sel=selectedNodeId===n.id?' selected':'';
+    html+='<div class="canvas-node'+sel+'" style="left:'+p.x+'px;top:'+p.y+'px;border-color:'+(sel?'#0f3460':(colors[n.type]||'#64748b'))+';" data-id="'+n.id+'">';
+    html+='<div class="node-header" style="background:'+(bgs[n.type]||'#f1f5f9')+';color:'+(tcs[n.type]||'#64748b')+';">'+(icons[n.type]||'NODE')+'</div>';
+    html+='<div class="node-body">'+esc(n.id)+'</div>';
+    html+='<div class="node-ports"><div class="port input" onclick="event.stopPropagation();onPortClick(\''+n.id+'\',\'input\')"></div><div class="port output" onclick="event.stopPropagation();onPortClick(\''+n.id+'\',\'output\')"></div></div></div>';
   });
-
-  // END node
-  const lastLevel = Math.max(...Object.values(positions).map(p => p.x), 0);
-  html += '<div class="canvas-node" style="left:' + (lastLevel + 155) + 'px;top:' + (positions._end ? positions._end.y : 270) + 'px;min-width:70px;background:#f1f5f9;border-color:#64748b;cursor:default;">';
-  html += '<div class="node-body" style="text-align:center;font-size:0.8rem;color:#64748b;font-weight:600;">END</div></div>';
-
-  container.innerHTML = html;
-
-  // Render connections (SVG)
-  drawConnections(positions);
-
-  stats.textContent = builderNodes.length + ' nodes, ' + builderEdges.length + ' connections';
+  el.innerHTML=html;
+  drawConnections(pos);
+  // Re-select the previously selected node's DOM element
+  if(selectedNodeId){var sel=el.querySelector('.canvas-node[data-id="'+selectedNodeId+'"]');if(sel)sel.classList.add('selected');}
 }
 
-function calculateLayout(nodes, edges) {
-  if (nodes.length === 0) return {};
-
-  const children = {};
-  nodes.forEach(n => { children[n.id] = []; });
-  edges.forEach(e => {
-    if (e.from !== 'START' && e.from !== 'END' && children[e.from]) children[e.from].push(e.to);
-  });
-
-  // BFS from START to assign levels
-  const levels = {};
-  const queue = [{id: 'START', depth: -1}];
-  const visited = new Set();
-  while (queue.length) {
-    const {id, depth} = queue.shift();
-    if (visited.has(id)) continue;
-    visited.add(id);
-    if (id !== 'START' && id !== 'END') levels[id] = depth;
-    (children[id] || []).forEach(c => {
-      if (!visited.has(c)) queue.push({id: c, depth: depth + 1});
-    });
+function calcLayout(){
+  if(builderNodes.length===0)return{};
+  var children={};builderNodes.forEach(function(n){children[n.id]=[];});
+  builderEdges.forEach(function(e){if(children[e.from])children[e.from].push(e.to);});
+  var levels={},queue=[],visited= new Set();
+  // Find nodes with no incoming edges (start nodes)
+  var hasIncoming={};builderEdges.forEach(function(e){hasIncoming[e.to]=true;});
+  builderNodes.forEach(function(n){if(!hasIncoming[n.id])queue.push({id:n.id,depth:0});});
+  while(queue.length){
+    var cur=queue.shift();
+    if(visited.has(cur.id))continue;
+    visited.add(cur.id);
+    levels[cur.id]=cur.depth;
+    (children[cur.id]||[]).forEach(function(c){if(!visited.has(c))queue.push({id:c,depth:cur.depth+1});});
   }
-
-  // Group by level
-  const byLevel = {};
-  Object.entries(levels).forEach(([id, lv]) => {
-    if (!byLevel[lv]) byLevel[lv] = [];
-    byLevel[lv].push(id);
-  });
-
-  const positions = {};
-  const NODE_W = 140, NODE_H = 52, GAP_X = 200, GAP_Y = 90;
-
-  Object.entries(byLevel).forEach(([lv, ids]) => {
-    const count = ids.length;
-    const startY = 260 - (count - 1) * GAP_Y / 2;
-    ids.forEach((id, i) => {
-      positions[id] = {x: (parseInt(lv) + 1) * GAP_X + 30, y: startY + i * GAP_Y};
+  var byLevel={};
+  Object.keys(levels).forEach(function(id){var lv=levels[id];if(!byLevel[lv])byLevel[lv]=[];byLevel[lv].push(id);});
+  var pos={},GAP=200,GAPY=90;
+  Object.keys(byLevel).forEach(function(lv){
+    var ids=byLevel[lv],startY=260-(ids.length-1)*GAPY/2;
+    ids.forEach(function(id,i){
+      if(nodePositions[id])pos[id]=nodePositions[id];
+      else pos[id]={x:(parseInt(lv)+1)*GAP,y:startY+i*GAPY};
     });
   });
-
-  positions._start = {x: 30, y: 275};
-  positions._end = {x: 0, y: 275};
-
-  return positions;
+  return pos;
 }
 
-function drawConnections(positions) {
-  const svg = document.getElementById('canvas-svg');
-  const paths = [];
-  const NODE_W = 140;
-
-  builderEdges.forEach(e => {
-    let fromPos, toPos;
-    if (e.from === 'START') fromPos = {x: positions._start.x + 70, y: positions._start.y + 16};
-    else fromPos = positions[e.from];
-    if (e.to === 'END') toPos = {x: (positions._end ? positions._end.x : 0), y: (positions._end ? positions._end.y : 0)};
-    else toPos = positions[e.to];
-
-    if (!fromPos || !toPos) return;
-
-    const x1 = e.from === 'START' ? fromPos.x : fromPos.x + NODE_W;
-    const y1 = e.from === 'START' ? fromPos.y : fromPos.y + 26;
-    const x2 = e.to === 'END' ? (toPos.x || x1 + 200) : toPos.x;
-    const y2 = e.to === 'END' ? (toPos.y || y1) : toPos.y + 26;
-
-    const cx = (x1 + x2) / 2;
-    const d = 'M' + x1 + ',' + y1 + ' C' + cx + ',' + y1 + ' ' + cx + ',' + y2 + ' ' + x2 + ',' + y2;
-    const isCond = builderNodes.find(n => n.id === e.from && n.type === 'condition');
-
-    paths.push({d: d, label: e.output_port || '', isCond: !!isCond});
+function drawConnections(pos){
+  var svg=document.getElementById('canvas-svg'),paths=[];
+  builderEdges.forEach(function(e){
+    var fp=pos[e.from],tp=pos[e.to];if(!fp||!tp)return;
+    var x1=fp.x+140,y1=fp.y+26,x2=tp.x,y2=tp.y+26,cx=(x1+x2)/2;
+    paths.push({d:'M'+x1+','+y1+' C'+cx+','+y1+' '+cx+','+y2+' '+x2+','+y2,label:e.output_port||''});
   });
+  var h='<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10" fill="#94a3b8"/></marker></defs>';
+  paths.forEach(function(p){
+    h+='<path d="'+p.d+'" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrow)"/>';
+    if(p.label){var parts=p.d.split(' ');if(parts.length>3){var mid=parts[2].split(',');h+='<rect x="'+(parseFloat(mid[0])-12)+'" y="'+(parseFloat(mid[1])-6)+'" width="26" height="16" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1"/><text x="'+parseFloat(mid[0])+'" y="'+parseFloat(mid[1])+4+'" text-anchor="middle" fill="#92400e" font-size="10" font-weight="600">'+p.label+'</text>';}}
+  });
+  svg.innerHTML=h;
+}
 
-  let svgContent = '<defs><marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10" fill="#94a3b8"/></marker></defs>';
-
-  paths.forEach(p => {
-    svgContent += '<path d="' + p.d + '" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>';
-    if (p.label) {
-      const parts = p.d.split(' ');
-      if (parts.length > 3) {
-        const mid = parts[2].split(',');
-        const x = parseFloat(mid[0]) - 10;
-        const y = parseFloat(mid[1]) - 10;
-        svgContent += '<rect x="' + (x - 12) + '" y="' + (y - 6) + '" width="26" height="16" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1"/>';
-        svgContent += '<text x="' + x + '" y="' + (y + 4) + '" text-anchor="middle" fill="#92400e" font-size="10" font-weight="600">' + p.label + '</text>';
+// ===== Canvas Interactions =====
+function initCanvas(){
+  if(_canvasInited)return;_canvasInited=true;
+  var c=document.getElementById('builder-canvas');if(!c)return;
+  var d={pan:false,drag:false,node:null,ox:0,oy:0,sx:0,sy:0,sl:0,st:0};
+  c.onmousedown=function(e){
+    var n=e.target.closest('.canvas-node'),p=e.target.closest('.port'),f=e.target.closest('.floating-panel')||e.target.closest('.panel-tab');
+    if(p||f)return;
+    d.sx=e.clientX;d.sy=e.clientY;d.sl=c.scrollLeft;d.st=c.scrollTop;
+    if(n){
+      var id=n.getAttribute('data-id');if(!id)return;
+      d.node={el:n,id:id};var r=n.getBoundingClientRect();d.ox=e.clientX-r.left;d.oy=e.clientY-r.top;
+      n.style.zIndex=100;
+    }else{d.pan=true;c.style.cursor='grabbing';}
+  };
+  document.onmousemove=function(e){
+    if(d.pan){c.scrollLeft=d.sl-(e.clientX-d.sx);c.scrollTop=d.st-(e.clientY-d.sy);return;}
+    if(!d.node)return;
+    if(!d.drag&&(Math.abs(e.clientX-d.sx)>3||Math.abs(e.clientY-d.sy)>3)){d.drag=true;selectedNodeId=d.node.id;}
+    if(!d.drag)return;
+    var cr=c.getBoundingClientRect();
+    var x=e.clientX-cr.left-d.ox+c.scrollLeft,y=e.clientY-cr.top-d.oy+c.scrollTop;
+    d.node.el.style.left=x+'px';d.node.el.style.top=y+'px';
+    nodePositions[d.node.id]={x:x,y:y};
+    drawConnections(calcLayout());
+  };
+  document.onmouseup=function(){
+    if(d.pan){d.pan=false;c.style.cursor='grab';}
+    if(d.node){
+      d.node.el.style.zIndex='';
+      if(!d.drag){
+        // Select node on click
+        selectNodeById(d.node.id);
       }
+      d.node=null;d.drag=false;
     }
-  });
-
-  svg.innerHTML = svgContent;
+  };
 }
 
-function selectNode(id) {
-  selectedNodeId = id;
-  renderCanvas();
+function selectNodeById(id){
+  selectedNodeId=id;
+  // Update visual selection without re-rendering
+  var el=document.getElementById('canvas-nodes');
+  if(el){
+    el.querySelectorAll('.canvas-node').forEach(function(n){n.classList.remove('selected');});
+    var sel=el.querySelector('.canvas-node[data-id="'+id+'"]');
+    if(sel)sel.classList.add('selected');
+  }
   showProperties();
 }
 
-function showProperties() {
-  const panel = document.getElementById('node-properties');
-  const node = builderNodes.find(n => n.id === selectedNodeId);
-  if (!node) {
-    panel.innerHTML = '<div class="empty-state" style="padding:16px;"><p style="font-size:0.82rem;">Select a node to edit.</p></div>';
-    return;
-  }
-
-  const colors = {code: '#3b82f6', agent: '#10b981', condition: '#f59e0b', human: '#ec4899'};
-  const bgColors = {code: '#dbeafe', agent: '#d1fae5', condition: '#fef3c7', human: '#fce7f3'};
-  const textColors = {code: '#1d4ed8', agent: '#065f46', condition: '#92400e', human: '#9d174d'};
-
-  let html = '<div style="background:#fff;border-radius:8px;padding:12px;border:1px solid #e2e8f0;">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
-  html += '<span style="background:' + (bgColors[node.type]||'#f1f5f9') + ';color:' + (textColors[node.type]||'#64748b') + ';padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:600;">' + (node.type).toUpperCase() + '</span>';
-  html += '<button class="btn btn-xs btn-danger" onclick="deleteNode(\'' + node.id + '\')">Delete</button></div>';
-
-  html += '<div class="form-group"><label>ID</label><input value="' + esc(node.id) + '" onchange="updateNodeProp(\'id\', this.value)"></div>';
-
-  if (node.type === 'code') {
-    html += '<div class="form-group"><label>Webhook URL</label><input value="' + esc(node.webhook_url||'') + '" onchange="updateNodeProp(\'webhook_url\', this.value)"></div>';
-    html += '<div class="form-group"><label>Description</label><input value="' + esc(node.description||'') + '" onchange="updateNodeProp(\'description\', this.value)"></div>';
-  } else if (node.type === 'agent') {
-    const cfg = node.agent_config || {};
-    html += '<div class="form-group"><label>LLM Profile</label><select onchange="updateAgentConfig(\'profile\', this.value)"><option value="">Select...</option></select></div>';
-    html += '<div class="form-group"><label>System Prompt</label><textarea rows="3" onchange="updateAgentConfig(\'system_prompt\', this.value)">' + esc(cfg.system_prompt||'') + '</textarea></div>';
-    html += '<div class="form-group"><label>Tools (comma-separated node IDs)</label><input value="' + esc((cfg.tools||[]).join(', ')) + '" onchange="updateAgentConfig(\'tools\', this.value.split(\',\').map(s=>s.trim()))"></div>';
-    html += '<div class="form-group"><label>Max Turns</label><input type="number" value="' + (cfg.max_turns||10) + '" onchange="updateAgentConfig(\'max_turns\', parseInt(this.value)||10)"></div>';
-    // Load profiles
-    setTimeout(function() {
-      const sel = document.querySelector('#node-properties select');
-      if (sel) api('/api/v1/llm/profiles').then(names => {
-        if (Array.isArray(names)) sel.innerHTML = '<option value="">Select...</option>' + names.map(n => '<option value="' + n + '"' + (cfg.profile === n ? ' selected' : '') + '>' + n + '</option>').join('');
-      });
-    }, 50);
-  } else if (node.type === 'condition') {
-    html += '<div class="form-group"><label>Expression</label><input value="' + esc(node.expression||'') + '" onchange="updateNodeProp(\'expression\', this.value)"></div>';
-  } else if (node.type === 'human') {
-    html += '<div class="form-group"><label>Description</label><input value="' + esc(node.description||'') + '" onchange="updateNodeProp(\'description\', this.value)"></div>';
-    html += '<div class="form-group"><label>Assignee Group</label><input value="' + esc(node.assignee_group||'') + '" onchange="updateNodeProp(\'assignee_group\', this.value)"></div>';
-  }
-
-  html += '</div>';
-  panel.innerHTML = html;
-}
-
-function updateNodeProp(key, val) {
-  const node = builderNodes.find(n => n.id === selectedNodeId);
-  if (node) { node[key] = val; renderCanvas(); }
-}
-
-function updateAgentConfig(key, val) {
-  const node = builderNodes.find(n => n.id === selectedNodeId);
-  if (node) {
-    if (!node.agent_config) node.agent_config = {};
-    node.agent_config[key] = val;
-  }
-}
-
-function deleteNode(id) {
-  builderNodes = builderNodes.filter(n => n.id !== id);
-  builderEdges = builderEdges.filter(e => e.from !== id && e.to !== id);
-  if (selectedNodeId === id) selectedNodeId = null;
-  renderCanvas();
-  document.getElementById('node-properties').innerHTML = '<div class="empty-state" style="padding:16px;"><p style="font-size:0.82rem;">Select a node to edit.</p></div>';
-}
-
-function connectPort(nodeId, direction) {
-  if (direction === 'output') {
-    connectFromNode = nodeId;
-    return;
-  }
-  if (connectFromNode && connectFromNode !== nodeId) {
-    const exists = builderEdges.find(e => e.from === connectFromNode && e.to === nodeId);
-    if (!exists) {
-      const isCond = builderNodes.find(n => n.id === connectFromNode && n.type === 'condition');
-      builderEdges.push({from: connectFromNode, to: nodeId, output_port: isCond ? 'true' : ''});
+function onPortClick(id,dir){
+  if(dir==='output'){_connectFrom=id;return;}
+  if(_connectFrom&&_connectFrom!==id){
+    if(!builderEdges.find(function(e){return e.from===_connectFrom&&e.to===id;})){
+      var isCond=builderNodes.find(function(n){return n.id===_connectFrom&&n.type==='condition';});
+      builderEdges.push({from:_connectFrom,to:id,output_port:isCond?'true':''});
+      renderCanvas();showProperties();
     }
-    connectFromNode = null;
-    renderCanvas();
+    _connectFrom=null;
   }
 }
 
-function saveTemplateFromBuilder() {
-  const name = document.getElementById('b-name').value.trim();
-  if (!name) { alert('Template name is required'); return; }
-  if (builderNodes.length === 0) { alert('Add at least one node'); return; }
+// ===== Properties =====
+function showProperties(){
+  var panel=document.getElementById('node-properties');
+  var node=builderNodes.find(function(n){return n.id===selectedNodeId;});
+  if(!node){panel.innerHTML='<div class="empty-state" style="padding:16px;"><p style="font-size:0.82rem;">Select a node to edit.</p></div>';return;}
+  var bgs={code:'#dbeafe',agent:'#d1fae5',condition:'#fef3c7',human:'#fce7f3'},tcs={code:'#1d4ed8',agent:'#065f46',condition:'#92400e',human:'#9d174d'};
+  var h='<div style="background:#fff;border-radius:8px;padding:12px;border:1px solid #e2e8f0;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="background:'+(bgs[node.type]||'#f1f5f9')+';color:'+(tcs[node.type]||'#64748b')+';padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:600;">'+(node.type).toUpperCase()+'</span><button class="btn btn-xs btn-danger" onclick="deleteNode(\''+node.id+'\')">Delete</button></div>';
+  h+='<div class="form-group"><label>ID</label><input value="'+esc(node.id)+'" onchange="updateNode(\'id\',this.value)"></div>';
+  if(node.type==='code'){h+='<div class="form-group"><label>Webhook URL</label><input value="'+esc(node.webhook_url||'')+'" onchange="updateNode(\'webhook_url\',this.value)"></div><div class="form-group"><label>Description</label><input value="'+esc(node.description||'')+'" onchange="updateNode(\'description\',this.value)"></div>';}
+  if(node.type==='agent'){var cfg=node.agent_config||{};h+='<div class="form-group"><label>LLM Profile</label><select id="agent-profile-sel" onchange="updateAgent(\'profile\',this.value)"><option value="">Select...</option></select></div><div class="form-group"><label>System Prompt</label><textarea rows="3" onchange="updateAgent(\'system_prompt\',this.value)">'+esc(cfg.system_prompt||'')+'</textarea></div><div class="form-group"><label>Tools</label><input value="'+esc((cfg.tools||[]).join(', '))+'" onchange="updateAgent(\'tools\',this.value.split(\',\').map(function(s){return s.trim();}))"></div><div class="form-group"><label>Max Turns</label><input type="number" value="'+(cfg.max_turns||10)+'" onchange="updateAgent(\'max_turns\',parseInt(this.value)||10)"></div>';setTimeout(function(){var s=document.getElementById('agent-profile-sel');if(s)api('/api/v1/llm/profiles').then(function(ns){if(Array.isArray(ns))s.innerHTML='<option value="">Select...</option>'+ns.map(function(n){return'<option value="'+n+'"'+(cfg.profile===n?' selected':'')+'>'+n+'</option>';}).join('');});},50);}
+  if(node.type==='condition'){h+='<div class="form-group"><label>Expression</label><input value="'+esc(node.expression||'')+'" onchange="updateNode(\'expression\',this.value)"></div>';}
+  if(node.type==='human'){h+='<div class="form-group"><label>Description</label><input value="'+esc(node.description||'')+'" onchange="updateNode(\'description\',this.value)"></div><div class="form-group"><label>Assignee Group</label><input value="'+esc(node.assignee_group||'')+'" onchange="updateNode(\'assignee_group\',this.value)"></div>';}
+  h+='</div>';panel.innerHTML=h;
+}
+function updateNode(k,v){var n=builderNodes.find(function(x){return x.id===selectedNodeId;});if(n){n[k]=v;renderCanvas();}}
+function updateAgent(k,v){var n=builderNodes.find(function(x){return x.id===selectedNodeId;});if(n){if(!n.agent_config)n.agent_config={};n.agent_config[k]=v;}}
+function deleteNode(id){builderNodes=builderNodes.filter(function(n){return n.id!==id;});builderEdges=builderEdges.filter(function(e){return e.from!==id&&e.to!==id;});if(selectedNodeId===id)selectedNodeId=null;renderCanvas();showProperties();}
 
-  // Clean edges: remove output_port if not a condition
-  const edges = builderEdges.map(e => {
-    const isCond = builderNodes.find(n => n.id === e.from && n.type === 'condition');
-    return {from: e.from, to: e.to, output_port: isCond ? (e.output_port || 'true') : undefined};
-  });
-
-  api('/api/v1/templates', {
-    method: 'POST',
-    body: JSON.stringify({name, description: document.getElementById('b-desc').value.trim(), nodes: builderNodes, edges})
-  }).then(() => {
-    showPage('templates');
-  });
+function saveTemplateFromBuilder(){
+  var name=document.getElementById('b-name').value.trim();if(!name){alert('Template name is required');return;}
+  if(builderNodes.length===0){alert('Add at least one node');return;}
+  var edges=builderEdges.map(function(e){var isCond=builderNodes.find(function(n){return n.id===e.from&&n.type==='condition';});return{from:e.from,to:e.to,output_port:isCond?(e.output_port||'true'):undefined};});
+  api('/api/v1/templates',{method:'POST',body:JSON.stringify({name:name,description:document.getElementById('b-desc').value.trim(),nodes:builderNodes,edges:edges})}).then(function(){showPage('templates');});
 }
 
-// ==================== Templates ====================
-function loadTemplates() {
-  api('/api/v1/templates').then(data => {
-    templates = Array.isArray(data) ? data : [];
-    const tbody = document.getElementById('template-list');
-    if (templates.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><p>No templates yet.</p></td></tr>'; return;
-    }
-    tbody.innerHTML = templates.map(t => '<tr><td><strong>' + esc(t.name) + '</strong><br><span style="font-size:0.75rem;color:#94a3b8;">' + esc(t.description||'') + '</span></td><td>' + (t.nodes||[]).length + ' nodes</td><td style="font-size:0.8rem;color:#64748b;">' + fmtTime(t.created_at) + '</td><td style="text-align:right;"><button class="btn btn-sm btn-primary" onclick="startInstance(\'' + t.id + '\')">Run</button> <button class="btn btn-sm btn-danger" onclick="deleteTemplate(\'' + t.id + '\')">Delete</button></td></tr>').join('');
+// ===== Templates =====
+function loadTemplates(){
+  api('/api/v1/templates').then(function(data){
+    templates=Array.isArray(data)?data:[];
+    var tbody=document.getElementById('template-list');
+    if(templates.length===0){tbody.innerHTML='<tr><td colspan="4" class="empty-state"><p>No templates yet.</p></td></tr>';return;}
+    tbody.innerHTML=templates.map(function(t){return'<tr><td><strong>'+esc(t.name)+'</strong><br><span style="font-size:0.75rem;color:#94a3b8;">'+esc(t.description||'')+'</span></td><td>'+(t.nodes||[]).length+' nodes</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(t.created_at)+'</td><td style="text-align:right;"><button class="btn btn-sm btn-primary" onclick="startInstance(\''+t.id+'\')">Run</button> <button class="btn btn-sm btn-danger" onclick="deleteTemplate(\''+t.id+'\')">Delete</button></td></tr>';}).join('');
   });
 }
+function deleteTemplate(id){if(!confirm('Delete this template?'))return;api('/api/v1/templates/'+id,{method:'DELETE'}).then(function(){loadTemplates();});}
+function startInstance(id){var inp=prompt('Initial data (JSON, optional):','{}');if(inp===null)return;try{var d=JSON.parse(inp||'{}');}catch(e){alert('Invalid JSON');return;}api('/api/v1/templates/'+id+'/instances',{method:'POST',body:JSON.stringify({input:d})}).then(function(r){alert('Instance started: '+(r.id||'')+' - Status: '+r.status);showPage('instances');});}
 
-function deleteTemplate(id) {
-  if (!confirm('Delete this template?')) return;
-  api('/api/v1/templates/' + id, {method: 'DELETE'}).then(() => loadTemplates());
-}
-
-function startInstance(tmplId) {
-  const input = prompt('Initial data (JSON, optional):', '{}');
-  if (input === null) return;
-  let data;
-  try { data = JSON.parse(input || '{}'); } catch(e) { alert('Invalid JSON'); return; }
-  api('/api/v1/templates/' + tmplId + '/instances', {method: 'POST', body: JSON.stringify({input: data})}).then(r => {
-    alert('Instance started: ' + (r.id || '') + ' - Status: ' + r.status);
-    showPage('instances');
+// ===== Instances =====
+function loadInstances(){
+  api('/api/v1/instances').then(function(data){
+    var list=document.getElementById('instance-list');
+    if(!Array.isArray(data)||data.length===0){list.innerHTML='<tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr>';return;}
+    list.innerHTML=data.map(function(i){return'<tr><td><code style="font-size:0.78rem;">'+shortId(i.id)+'</code></td><td>'+esc(i.template_id)+'</td><td><span class="badge badge-'+i.status+'">'+i.status+'</span></td><td style="font-size:0.8rem;color:#64748b;">'+(i.current_node_id||'-')+'</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(i.created_at)+'</td><td style="text-align:right;"><button class="btn btn-xs btn-outline" onclick="showInstance(\''+i.id+'\')">Detail</button></td></tr>';}).join('');
   });
 }
+function showInstance(id){api('/api/v1/instances/'+id).then(function(i){document.getElementById('instance-detail').innerHTML='<div class="detail-grid"><div><div class="detail-label">ID</div><div class="detail-value"><code>'+i.id+'</code></div></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="badge badge-'+i.status+'">'+i.status+'</span></div></div><div><div class="detail-label">Template</div><div class="detail-value">'+i.template_id+'</div></div><div><div class="detail-label">Current Node</div><div class="detail-value">'+(i.current_node_id||'-')+'</div></div></div>'+(i.error?'<div style="background:#fef2f2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;">'+esc(i.error)+'</div>':'')+'<div style="margin-top:8px;"><div class="detail-label">State</div><div class="json-box">'+JSON.stringify(i.state||{},null,2)+'</div></div><div style="margin-top:8px;"><div class="detail-label">Node States</div><div class="json-box">'+JSON.stringify(i.node_states||{},null,2)+'</div></div>';openModal('modal-instance');});}
 
-// ==================== Instances ====================
-function loadInstances() {
-  api('/api/v1/instances').then(data => {
-    const list = document.getElementById('instance-list');
-    if (!Array.isArray(data) || data.length === 0) {
-      list.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr>'; return;
-    }
-    list.innerHTML = data.map(i => '<tr><td><code style="font-size:0.78rem;">' + shortId(i.id) + '</code></td><td>' + esc(i.template_id) + '</td><td><span class="badge badge-' + i.status + '">' + i.status + '</span></td><td style="font-size:0.8rem;color:#64748b;">' + (i.current_node_id||'-') + '</td><td style="font-size:0.8rem;color:#64748b;">' + fmtTime(i.created_at) + '</td><td style="text-align:right;"><button class="btn btn-xs btn-outline" onclick="showInstance(\'' + i.id + '\')">Detail</button></td></tr>').join('');
-  });
-}
+// ===== Tasks =====
+function loadTasks(status){var url='/api/v1/human-tasks';if(status)url+='?status='+status;api(url).then(function(data){var list=document.getElementById('task-list');if(!Array.isArray(data)||data.length===0){list.innerHTML='<tr><td colspan="6" class="empty-state"><p>No tasks.</p></td></tr>';return;}list.innerHTML=data.map(function(t){return'<tr><td><code style="font-size:0.78rem;">'+shortId(t.id)+'</code></td><td>'+esc(t.node_description)+'</td><td style="font-size:0.8rem;color:#64748b;">'+esc(t.assignee_group||'-')+'</td><td><span class="badge badge-'+t.status+'">'+t.status+'</span></td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(t.created_at)+'</td><td style="text-align:right;">'+(t.status==='pending'?'<button class="btn btn-xs btn-primary" onclick="openResume(\''+t.id+'\')">Handle</button>':'<span style="font-size:0.75rem;color:#94a3b8;">Done</span>')+'</td></tr>';}).join('');});}
+function openResume(id){_currentTaskId=id;api('/api/v1/human-tasks?status=pending').then(function(tasks){var task=Array.isArray(tasks)?tasks.find(function(t){return t.id===id;}):null;if(!task){alert('Task not found');return;}document.getElementById('task-detail').innerHTML='<div class="detail-grid"><div><div class="detail-label">Node</div><div class="detail-value">'+esc(task.node_description)+'</div></div><div><div class="detail-label">Assignee</div><div class="detail-value">'+esc(task.assignee_group||'-')+'</div></div></div><div style="margin-top:8px;margin-bottom:12px;"><div class="detail-label">Input Data</div><div class="json-box">'+JSON.stringify(task.input_data||{},null,2)+'</div></div>';openModal('modal-resume');});}
+function resumeTask(action){var result;try{result=JSON.parse(document.getElementById('resume-data').value);}catch(e){result={comment:document.getElementById('resume-data').value};}api('/api/v1/human-tasks/'+_currentTaskId+'/resume',{method:'POST',body:JSON.stringify({action:action,result:result})}).then(function(){closeModal('modal-resume');loadTasks('pending');});}
 
-function showInstance(id) {
-  api('/api/v1/instances/' + id).then(i => {
-    document.getElementById('instance-detail').innerHTML = '<div class="detail-grid"><div><div class="detail-label">ID</div><div class="detail-value"><code>' + i.id + '</code></div></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="badge badge-' + i.status + '">' + i.status + '</span></div></div><div><div class="detail-label">Template</div><div class="detail-value">' + i.template_id + '</div></div><div><div class="detail-label">Current Node</div><div class="detail-value">' + (i.current_node_id||'-') + '</div></div></div>' + (i.error ? '<div style="background:#fef2f2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;">' + esc(i.error) + '</div>' : '') + '<div style="margin-top:8px;"><div class="detail-label">State</div><div class="json-box">' + JSON.stringify(i.state||{}, null, 2) + '</div></div><div style="margin-top:8px;"><div class="detail-label">Node States</div><div class="json-box">' + JSON.stringify(i.node_states||{}, null, 2) + '</div></div>';
-    openModal('modal-instance');
-  });
-}
+// ===== Utils =====
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function shortId(id){return id?id.substring(0,10)+'...':'-';}
+function fmtTime(t){return t?new Date(t).toLocaleString():'-';}
 
-// ==================== Tasks ====================
-function loadTasks(status) {
-  let url = '/api/v1/human-tasks';
-  if (status) url += '?status=' + status;
-  api(url).then(data => {
-    const list = document.getElementById('task-list');
-    if (!Array.isArray(data) || data.length === 0) {
-      list.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No tasks.</p></td></tr>'; return;
-    }
-    list.innerHTML = data.map(t => '<tr><td><code style="font-size:0.78rem;">' + shortId(t.id) + '</code></td><td>' + esc(t.node_description) + '</td><td style="font-size:0.8rem;color:#64748b;">' + esc(t.assignee_group||'-') + '</td><td><span class="badge badge-' + t.status + '">' + t.status + '</span></td><td style="font-size:0.8rem;color:#64748b;">' + fmtTime(t.created_at) + '</td><td style="text-align:right;">' + (t.status === 'pending' ? '<button class="btn btn-xs btn-primary" onclick="openResume(\'' + t.id + '\')">Handle</button>' : '<span style="font-size:0.75rem;color:#94a3b8;">Done</span>') + '</td></tr>').join('');
-  });
-}
-
-function openResume(id) {
-  _currentTaskId = id;
-  api('/api/v1/human-tasks?status=pending').then(tasks => {
-    const task = Array.isArray(tasks) ? tasks.find(t => t.id === id) : null;
-    if (!task) { alert('Task not found'); return; }
-    document.getElementById('task-detail').innerHTML = '<div class="detail-grid"><div><div class="detail-label">Node</div><div class="detail-value">' + esc(task.node_description) + '</div></div><div><div class="detail-label">Assignee</div><div class="detail-value">' + esc(task.assignee_group||'-') + '</div></div></div><div style="margin-top:8px;margin-bottom:12px;"><div class="detail-label">Input Data</div><div class="json-box">' + JSON.stringify(task.input_data||{}, null, 2) + '</div></div>';
-    openModal('modal-resume');
-  });
-}
-
-function resumeTask(action) {
-  let result;
-  try { result = JSON.parse(document.getElementById('resume-data').value); } catch(e) { result = {comment: document.getElementById('resume-data').value}; }
-  api('/api/v1/human-tasks/' + _currentTaskId + '/resume', {method: 'POST', body: JSON.stringify({action, result})}).then(() => {
-    closeModal('modal-resume');
-    loadTasks('pending');
-  });
-}
-
-// ==================== Utils ====================
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function shortId(id) { return id ? id.substring(0, 10) + '...' : '-'; }
-function fmtTime(t) { return t ? new Date(t).toLocaleString() : '-'; }
-
-// Auto-load
 loadTemplates();
 </script>
 </body>
