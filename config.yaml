@@ -2,11 +2,13 @@ server:
   port: 8080
 
 database:
-  host: 127.0.0.1
+  # Empty = use in-memory storage (data lost on restart)
+  # To use MySQL, fill in the fields below:
+  host: ""
   port: 3306
-  user: root
-  password: your_password
-  database: workflow_platform
+  user: ""
+  password: ""
+  database: ""
 
 llm:
   profiles:
