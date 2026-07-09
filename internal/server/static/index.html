@@ -210,7 +210,6 @@ function openModal(id){document.getElementById(id).classList.add('active');}
 // ===== Builder =====
 function openBuilder(){
   nodePositions={};builderNodes=[];builderEdges=[];selectedNodeId=null;_canvasInited=false;_connectFrom=null;
-  document.getElementById('b-name').value='';document.getElementById('b-desc').value='';
   document.getElementById('add-popup').classList.remove('active');
   renderCanvas();showPage('builder');
   setTimeout(initCanvas,100);setTimeout(centerView,200);
@@ -223,7 +222,7 @@ function addNode(type){
   document.getElementById('add-popup').classList.remove('active');
   var n=builderNodes.filter(function(x){return x.type===type;}).length+1;
   var node={id:type+'_'+n,type:type};
-  if(type==='code')node.webhook_url='https://httpbin.org/post';
+  if(type==='code'){node.webhook_url='https://httpbin.org/post';node.method='POST';node.body_type='json';}
   if(type==='condition')node.expression='state._global.status == ok';
   if(type==='human'){node.description='Review and approve';node.assignee_group='admin';}
   if(type==='agent')node.agent_config={profile:'',system_prompt:'You are a helpful assistant.',tools:[],max_turns:10};
@@ -431,7 +430,14 @@ function showProperties(){
   var colors={code:'#3b82f6',agent:'#8b5cf6',condition:'#f59e0b',human:'#ec4899'};
   var h='<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #e2e8f0;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="background:'+(colors[node.type]||'#64748b')+';color:#fff;padding:3px 10px;border-radius:5px;font-size:0.72rem;font-weight:600;">'+(node.type).toUpperCase()+'</span><button class="btn btn-xs btn-danger" onclick="deleteNode(\''+node.id+'\')">Delete</button></div>';
   h+='<div class="form-group"><label>ID</label><input value="'+esc(node.id)+'" onchange="updateNode(\'id\',this.value)"></div>';
-  if(node.type==='code'){h+='<div class="form-group"><label>Webhook URL</label><input value="'+esc(node.webhook_url||'')+'" onchange="updateNode(\'webhook_url\',this.value)"></div><div class="form-group"><label>Description</label><input value="'+esc(node.description||'')+'" onchange="updateNode(\'description\',this.value)"></div>';}
+  if(node.type==='code'){
+  h+='<div class="form-group"><label>Description</label><input value="'+esc(node.description||'')+'" onchange="updateNode(\'description\',this.value)"></div>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:14px;"><div style="flex:0 0 100px;"><label>Method</label><select onchange="updateNode(\'method\',this.value)"><option value="GET"'+(node.method==='GET'?' selected':'')+'>GET</option><option value="POST"'+(node.method==='POST'?' selected':'')+'>POST</option><option value="PUT"'+(node.method==='PUT'?' selected':'')+'>PUT</option><option value="DELETE"'+(node.method==='DELETE'?' selected':'')+'>DELETE</option><option value="PATCH"'+(node.method==='PATCH'?' selected':'')+'>PATCH</option></select></div><div style="flex:1;"><label>URL <span style="color:#dc2626;">*</span></label><input value="'+esc(node.webhook_url||'')+'" placeholder="https://api.example.com/endpoint" onchange="updateNode(\'webhook_url\',this.value)"></div></div>';
+  h+='<div class="form-group"><label>Body Type</label><select onchange="updateNode(\'body_type\',this.value);showProperties()"><option value="none"'+(node.body_type==='none'||!node.body_type?' selected':'')+'>None</option><option value="raw"'+(node.body_type==='raw'?' selected':'')+'>Raw</option><option value="json"'+(node.body_type==='json'?' selected':'')+'>JSON</option></select></div>';
+  if(node.body_type&&node.body_type!=='none'){
+    h+='<div class="form-group"><label>Body Content</label><textarea rows="4" onchange="updateNode(\'body_content\',this.value)">'+esc(node.body_content||'')+'</textarea></div>';
+  }
+}
   if(node.type==='agent'){var a=node.agent_config||{};h+='<div class="form-group"><label>LLM Profile</label><select id="agent-profile-sel" onchange="updateAgent(\'profile\',this.value)"><option value="">Select...</option></select></div><div class="form-group"><label>System Prompt</label><textarea rows="3" onchange="updateAgent(\'system_prompt\',this.value)">'+esc(a.system_prompt||'')+'</textarea></div><div class="form-group"><label>Tools</label><input value="'+esc((a.tools||[]).join(', '))+'" onchange="updateAgent(\'tools\',this.value.split(\',\').map(function(s){return s.trim();}))"></div><div class="form-group"><label>Max Turns</label><input type="number" value="'+(a.max_turns||10)+'" onchange="updateAgent(\'max_turns\',parseInt(this.value)||10)"></div>';setTimeout(function(){var s=document.getElementById('agent-profile-sel');if(s)api('/api/v1/llm/profiles').then(function(ns){if(Array.isArray(ns))s.innerHTML='<option value="">Select...</option>'+ns.map(function(n){return'<option value="'+n+'"'+(a.profile===n?' selected':'')+'>'+n+'</option>';}).join('');});},50);}
   if(node.type==='condition'){h+='<div class="form-group"><label>Expression</label><input value="'+esc(node.expression||'')+'" onchange="updateNode(\'expression\',this.value)"></div>';}
   if(node.type==='human'){h+='<div class="form-group"><label>Description</label><input value="'+esc(node.description||'')+'" onchange="updateNode(\'description\',this.value)"></div><div class="form-group"><label>Assignee Group</label><input value="'+esc(node.assignee_group||'')+'" onchange="updateNode(\'assignee_group\',this.value)"></div>';}
@@ -448,13 +454,18 @@ function openSavePopup(){
   openModal('save-popup');
 }
 
+var localTemplates = [];
+
 function saveWorkflow(){
   var name=document.getElementById('save-name').value.trim();
   if(!name){alert('Workflow name is required');return;}
   if(builderNodes.length===0){alert('Add at least one node');return;}
   closeModal('save-popup');
   var edges=builderEdges.map(function(e){return{from:e.from,to:e.to};});
-  api('/api/v1/templates',{method:'POST',body:JSON.stringify({name:name,description:document.getElementById('save-desc').value.trim(),nodes:builderNodes,edges:edges})}).then(function(r){alert('Workflow saved!');showPage('templates');});
+  api('/api/v1/templates',{method:'POST',body:JSON.stringify({name:name,description:document.getElementById('save-desc').value.trim(),nodes:builderNodes,edges:edges})}).then(function(r){
+    if(r&&r.id){alert('Workflow saved!');showPage('templates');}
+    else{alert('Save failed: server not available');}
+  });
 }
 
 function testRunWorkflow(){
@@ -464,8 +475,20 @@ function testRunWorkflow(){
 
 // ===== Other Pages =====
 function loadTemplates(){api('/api/v1/templates').then(function(d){templates=Array.isArray(d)?d:[];var t=document.getElementById('template-list');if(templates.length===0){t.innerHTML='<tr><td colspan="4" class="empty-state"><p>No templates yet.</p></td></tr>';return;}t.innerHTML=templates.map(function(x){return'<tr><td><strong>'+esc(x.name)+'</strong><br><span style="font-size:0.75rem;color:#94a3b8;">'+esc(x.description||'')+'</span></td><td>'+(x.nodes||[]).length+' nodes</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.created_at)+'</td><td style="text-align:right;"><button class="btn btn-sm btn-primary" onclick="startInstance(\''+x.id+'\')">Run</button> <button class="btn btn-sm btn-danger" onclick="deleteTemplate(\''+x.id+'\')">Delete</button></td></tr>';}).join('');});}
-function deleteTemplate(id){if(!confirm('Delete this template?'))return;api('/api/v1/templates/'+id,{method:'DELETE'}).then(function(){loadTemplates();});}
-function startInstance(id){var i=prompt('Initial data (JSON):','{}');if(i===null)return;try{var d=JSON.parse(i||'{}');}catch(e){alert('Invalid JSON');return;}api('/api/v1/templates/'+id+'/instances',{method:'POST',body:JSON.stringify({input:d})}).then(function(r){alert('Instance started');showPage('instances');});}
+function deleteTemplate(id){
+  if(!confirm('Delete this template?'))return;
+  // Remove from local storage if it's a local template
+  localTemplates=localTemplates.filter(function(t){return t.id!==id;});
+  api('/api/v1/templates/'+id,{method:'DELETE'}).then(function(){loadTemplates();});
+}
+function startInstance(id){
+  // Check if it's a local template
+  var localTpl=localTemplates.find(function(t){return t.id===id;});
+  if(localTpl){
+    alert('Local workflow run (simulated):\nTemplate: '+localTpl.name+'\nNodes: '+localTpl.nodes.length+'\nEdges: '+localTpl.edges.length);
+    return;
+  }
+  var i=prompt('Initial data (JSON):','{}');if(i===null)return;try{var d=JSON.parse(i||'{}');}catch(e){alert('Invalid JSON');return;}api('/api/v1/templates/'+id+'/instances',{method:'POST',body:JSON.stringify({input:d})}).then(function(r){alert('Instance started');showPage('instances');});}
 function loadInstances(){api('/api/v1/instances').then(function(d){var l=document.getElementById('instance-list');if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr>';return;}l.innerHTML=d.map(function(i){return'<tr><td><code>'+shortId(i.id)+'</code></td><td>'+esc(i.template_id)+'</td><td><span class="badge badge-'+i.status+'">'+i.status+'</span></td><td>'+(i.current_node_id||'-')+'</td><td>'+fmtTime(i.created_at)+'</td><td><button class="btn btn-xs btn-outline" onclick="showInstance(\''+i.id+'\')">Detail</button></td></tr>';}).join('');});}
 function showInstance(id){api('/api/v1/instances/'+id).then(function(i){document.getElementById('instance-detail').innerHTML='<div class="detail-grid"><div><div class="detail-label">ID</div><div class="detail-value"><code>'+i.id+'</code></div></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="badge badge-'+i.status+'">'+i.status+'</span></div></div><div><div class="detail-label">Template</div><div class="detail-value">'+i.template_id+'</div></div><div><div class="detail-label">Current Node</div><div class="detail-value">'+(i.current_node_id||'-')+'</div></div></div>'+(i.error?'<div style="background:#fef2f2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;">'+esc(i.error)+'</div>':'')+'<div style="margin-top:8px;"><div class="detail-label">State</div><div class="json-box">'+JSON.stringify(i.state||{},null,2)+'</div></div><div style="margin-top:8px;"><div class="detail-label">Node States</div><div class="json-box">'+JSON.stringify(i.node_states||{},null,2)+'</div></div>';openModal('modal-instance');});}
 function loadTasks(s){var u='/api/v1/human-tasks';if(s)u+='?status='+s;api(u).then(function(d){var l=document.getElementById('task-list');if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No tasks.</p></td></tr>';return;}l.innerHTML=d.map(function(t){return'<tr><td><code>'+shortId(t.id)+'</code></td><td>'+esc(t.node_description)+'</td><td>'+esc(t.assignee_group||'-')+'</td><td><span class="badge badge-'+t.status+'">'+t.status+'</span></td><td>'+fmtTime(t.created_at)+'</td><td>'+(t.status==='pending'?'<button class="btn btn-xs btn-primary" onclick="openResume(\''+t.id+'\')">Handle</button>':'Done')+'</td></tr>';}).join('');});}

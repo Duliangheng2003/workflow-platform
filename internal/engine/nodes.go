@@ -17,16 +17,42 @@ func (e *Engine) codeLambda(node *model.Node) func(context.Context, map[string]a
 	client := &http.Client{Timeout: 30 * time.Second}
 
 	return func(ctx context.Context, state map[string]any) (map[string]any, error) {
-		body, err := json.Marshal(state)
-		if err != nil {
-			return nil, fmt.Errorf("marshal state: %w", err)
+		method := node.Method
+		if method == "" {
+			method = http.MethodPost
 		}
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, node.WebhookURL, bytes.NewReader(body))
+		var bodyReader *bytes.Reader
+		contentType := "application/json"
+
+		switch node.BodyType {
+		case "none":
+			bodyReader = bytes.NewReader(nil)
+		case "raw":
+			bodyStr := resolveTemplate(node.BodyContent, state)
+			bodyReader = bytes.NewReader([]byte(bodyStr))
+			contentType = "text/plain"
+		case "json":
+			bodyStr := resolveTemplate(node.BodyContent, state)
+			if bodyStr != "" {
+				bodyReader = bytes.NewReader([]byte(bodyStr))
+			} else {
+				stateJSON, _ := json.Marshal(state)
+				bodyReader = bytes.NewReader(stateJSON)
+			}
+		default:
+			body, err := json.Marshal(state)
+			if err != nil {
+				return nil, fmt.Errorf("marshal state: %w", err)
+			}
+			bodyReader = bytes.NewReader(body)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, method, node.WebhookURL, bodyReader)
 		if err != nil {
 			return nil, fmt.Errorf("create request: %w", err)
 		}
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", contentType)
 
 		resp, err := client.Do(req)
 		if err != nil {

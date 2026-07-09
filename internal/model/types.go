@@ -41,6 +41,9 @@ type Node struct {
 	Description   string    `json:"description,omitempty"`
 	// code node fields
 	WebhookURL    string    `json:"webhook_url,omitempty"`
+	Method        string    `json:"method,omitempty"`    // HTTP method: GET, POST, PUT, DELETE
+	BodyType      string    `json:"body_type,omitempty"` // none, raw, json
+	BodyContent   string    `json:"body_content,omitempty"` // request body content
 	// condition node fields
 	Expression    string    `json:"expression,omitempty"`
 	// human node fields
