@@ -18,7 +18,7 @@ import (
 	"github.com/Duliangheng2003/workflow-platform/internal/store/mysql"
 )
 
-//go:embed static/*.html
+//go:embed static/*.html static/*.css static/*.js
 var staticFiles embed.FS
 
 func Run(cfg *config.Config) error {
