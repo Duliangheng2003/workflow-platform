@@ -6,64 +6,76 @@ import "time"
 type NodeType string
 
 const (
-	NodeTypeCode      NodeType = "code"
-	NodeTypeCondition NodeType = "condition"
-	NodeTypeHuman     NodeType = "human"
-	NodeTypeLLM       NodeType = "llm"
-	NodeTypeAgent     NodeType = "agent"
+	NodeTypeCall      NodeType = "call"      // API Call (HTTP request)
+	NodeTypeCondition NodeType = "condition" // Condition expression
+	NodeTypeHuman     NodeType = "human"     // Human approval (deprecated)
+	NodeTypeLLM       NodeType = "llm"       // LLM call
+	NodeTypeAgent     NodeType = "agent"     // AI Agent
+	NodeTypeCode      NodeType = "code"      // Code script (JS/Python)
+	NodeTypeExtractor NodeType = "extractor" // File data extractor
 )
 
 // LLMConfig defines configuration for an LLM node.
-// API keys and model details are configured server-side in config.yaml
-// under `llm.profiles` — the workflow template only references a profile name.
 type LLMConfig struct {
-	Profile      string  `json:"profile"`       // references a server-side LLM profile (e.g. "openai-gpt4o")
-	SystemPrompt string  `json:"system_prompt"` // system prompt
-	UserPrompt   string  `json:"user_prompt"`   // template with {state.path.to.value} syntax
+	Profile      string  `json:"profile"`
+	SystemPrompt string  `json:"system_prompt"`
+	UserPrompt   string  `json:"user_prompt"`
 	Temperature  float64 `json:"temperature"`
 	MaxTokens    int     `json:"max_tokens"`
 }
 
 // AgentConfig defines configuration for an agent node.
-// The agent uses eino's ChatModelAgent with a ReAct loop, and can
-// call other nodes in the workflow as tools.
 type AgentConfig struct {
-	Profile      string   `json:"profile"`       // LLM profile name from config.yaml
-	SystemPrompt string   `json:"system_prompt"` // agent role/instruction
-	Tools        []string `json:"tools"`         // node IDs that this agent can call as tools
-	MaxTurns     int      `json:"max_turns"`     // max ReAct iterations (default 10)
+	Profile      string   `json:"profile"`
+	SystemPrompt string   `json:"system_prompt"`
+	Tools        []string `json:"tools"`
+	MaxTurns     int      `json:"max_turns"`
 }
 
 // Node defines a single node in a workflow template.
 type Node struct {
-	ID            string    `json:"id"`
-	Type          NodeType  `json:"type"`
-	Description   string    `json:"description,omitempty"`
-	// code node fields
-	WebhookURL    string    `json:"webhook_url,omitempty"`
-	Method        string    `json:"method,omitempty"`    // HTTP method: GET, POST, PUT, DELETE
-	BodyType      string    `json:"body_type,omitempty"` // none, raw, json
-	BodyContent   string    `json:"body_content,omitempty"` // request body content
+	ID          string   `json:"id"`
+	Type        NodeType `json:"type"`
+	Description string   `json:"description,omitempty"`
+	// call node fields (API Call)
+	WebhookURL  string `json:"webhook_url,omitempty"`
+	Method      string `json:"method,omitempty"`
+	BodyType    string `json:"body_type,omitempty"`
+	BodyContent string `json:"body_content,omitempty"`
 	// condition node fields
-	Expression    string    `json:"expression,omitempty"`
+	Expression string `json:"expression,omitempty"`
 	// human node fields
-	AssigneeGroup string    `json:"assignee_group,omitempty"`
+	AssigneeGroup string `json:"assignee_group,omitempty"`
 	// llm node fields
-	LLMConfig     *LLMConfig `json:"llm_config,omitempty"`
+	LLMConfig *LLMConfig `json:"llm_config,omitempty"`
 	// agent node fields
-	AgentConfig   *AgentConfig `json:"agent_config,omitempty"`
+	AgentConfig *AgentConfig `json:"agent_config,omitempty"`
+	// code node fields
+	Language string `json:"language,omitempty"` // "js" or "python"
+	Code     string `json:"code,omitempty"`     // script content
+	// extractor node fields
+	FileContent  string `json:"file_content,omitempty"`  // base64 encoded file content
+	FileName     string `json:"file_name,omitempty"`     // original file name
+	ExtractPrompt string `json:"extract_prompt,omitempty"` // custom extraction prompt
 }
+
+// EdgeType defines the type of a workflow edge.
+type EdgeType string
+
+const (
+	EdgeTypeFlow EdgeType = "flow"
+	EdgeTypeData EdgeType = "data"
+)
 
 // Edge defines a connection between two nodes in a workflow template.
-// For condition nodes, OutputPort specifies the branch ("true" or "false").
-// Regular nodes and START/END use empty OutputPort.
 type Edge struct {
-	From       string `json:"from"`
-	To         string `json:"to"`
-	OutputPort string `json:"output_port,omitempty"` // "true" / "false" for condition nodes
+	From       string   `json:"from"`
+	To         string   `json:"to"`
+	EdgeType   EdgeType `json:"edge_type,omitempty"`
+	OutputPort string   `json:"output_port,omitempty"`
 }
 
-// Template defines a workflow blueprint, created by the platform user.
+// Template defines a workflow blueprint.
 type Template struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
@@ -80,30 +92,30 @@ type InstanceStatus string
 const (
 	StatusPending   InstanceStatus = "pending"
 	StatusRunning   InstanceStatus = "running"
-	StatusPaused    InstanceStatus = "paused"    // waiting for human input
+	StatusPaused    InstanceStatus = "paused"
 	StatusCompleted InstanceStatus = "completed"
 	StatusFailed    InstanceStatus = "failed"
 )
 
 // NodeExecutionState records the result of a single node execution.
 type NodeExecutionState struct {
-	NodeID   string      `json:"node_id"`
-	Status   string      `json:"status"` // "pending", "running", "completed", "failed", "paused"
-	Output   interface{} `json:"output,omitempty"`
-	Error    string      `json:"error,omitempty"`
+	NodeID string      `json:"node_id"`
+	Status string      `json:"status"`
+	Output interface{} `json:"output,omitempty"`
+	Error  string      `json:"error,omitempty"`
 }
 
 // Instance represents a single execution of a workflow template.
 type Instance struct {
-	ID            string                        `json:"id"`
-	TemplateID    string                        `json:"template_id"`
-	Status        InstanceStatus                `json:"status"`
-	State         map[string]interface{}        `json:"state"`          // global workflow state
-	NodeStates    map[string]*NodeExecutionState `json:"node_states"`   // per-node execution state
-	CurrentNodeID string                        `json:"current_node_id,omitempty"`
-	Error         string                        `json:"error,omitempty"`
-	CreatedAt     time.Time                     `json:"created_at"`
-	UpdatedAt     time.Time                     `json:"updated_at"`
+	ID            string                         `json:"id"`
+	TemplateID    string                         `json:"template_id"`
+	Status        InstanceStatus                 `json:"status"`
+	State         map[string]interface{}         `json:"state"`
+	NodeStates    map[string]*NodeExecutionState `json:"node_states"`
+	CurrentNodeID string                         `json:"current_node_id,omitempty"`
+	Error         string                         `json:"error,omitempty"`
+	CreatedAt     time.Time                      `json:"created_at"`
+	UpdatedAt     time.Time                      `json:"updated_at"`
 }
 
 // HumanTaskStatus represents the status of a human task.
@@ -124,8 +136,8 @@ type HumanTask struct {
 	NodeDescription string          `json:"node_description"`
 	AssigneeGroup   string          `json:"assignee_group"`
 	Status          HumanTaskStatus `json:"status"`
-	InputData       interface{}     `json:"input_data"`    // state snapshot when paused
-	Result          interface{}     `json:"result,omitempty"` // human's input
+	InputData       interface{}     `json:"input_data"`
+	Result          interface{}     `json:"result,omitempty"`
 	CreatedAt       time.Time       `json:"created_at"`
 	UpdatedAt       time.Time       `json:"updated_at"`
 }
@@ -137,7 +149,7 @@ type StartInstanceRequest struct {
 
 // ResumeTaskRequest is the request body for resuming a human task.
 type ResumeTaskRequest struct {
-	Action string      `json:"action"` // "approve" or "reject"
+	Action string      `json:"action"`
 	Result interface{} `json:"result"`
 }
 

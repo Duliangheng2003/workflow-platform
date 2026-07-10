@@ -12,8 +12,8 @@ import (
 	"github.com/Duliangheng2003/workflow-platform/internal/model"
 )
 
-// codeLambda creates a Lambda that calls a user-configured webhook.
-func (e *Engine) codeLambda(node *model.Node) func(context.Context, map[string]any) (map[string]any, error) {
+// callLambda creates a Lambda that calls a user-configured webhook.
+func (e *Engine) callLambda(node *model.Node) func(context.Context, map[string]any) (map[string]any, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 
 	return func(ctx context.Context, state map[string]any) (map[string]any, error) {
@@ -221,4 +221,38 @@ func resolvePath(state map[string]any, segments []string) any {
 		}
 	}
 	return current
+}
+
+// codeLambda creates a Lambda that executes a JS/Python script.
+func (e *Engine) codeLambda(node *model.Node) func(context.Context, map[string]any) (map[string]any, error) {
+	return func(ctx context.Context, state map[string]any) (map[string]any, error) {
+		// For MVP, pass through the current state as input
+		// In production, this would execute the script in a sandbox
+		result := map[string]any{
+			"language": node.Language,
+			"input":    state,
+			"output":   state, // script result placeholder
+		}
+		state[node.ID] = result
+		return state, nil
+	}
+}
+
+// extractorLambda creates a Lambda that extracts data from uploaded files.
+// The extracted data is formatted as AI-friendly context.
+func (e *Engine) extractorLambda(node *model.Node) func(context.Context, map[string]any) (map[string]any, error) {
+	return func(ctx context.Context, state map[string]any) (map[string]any, error) {
+		// For MVP, return the uploaded file metadata as extracted context
+		// In production, this would use an LLM to extract structured info
+		extracted := map[string]any{
+			"file_name":    node.FileName,
+			"extract_prompt": node.ExtractPrompt,
+			"content_preview": node.FileContent,
+		}
+		state[node.ID] = map[string]any{
+			"extracted_context": extracted,
+			"summary": fmt.Sprintf("Extracted from %s: ready for AI processing", node.FileName),
+		}
+		return state, nil
+	}
 }

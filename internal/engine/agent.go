@@ -17,8 +17,8 @@ import (
 )
 
 // agentLambda creates a Lambda that executes an eino ChatModelAgent.
-// The agent runs a ReAct loop: it can think, call tools (code nodes),
-// observe results, and decide what to do next.
+// The agent runs a ReAct loop: it can think, call tools, observe results,
+// and decide what to do next. Data edges provide business context.
 func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(context.Context, map[string]any) (map[string]any, error) {
 	return func(ctx context.Context, state map[string]any) (map[string]any, error) {
 		cfg := node.AgentConfig
@@ -35,7 +35,7 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 		// 2. Create ChatModel wrapper
 		cm := newChatModel(profile)
 
-		// 3. Build tools from referenced code nodes
+		// 3. Build tools from agent_config.tools (eino internal tool calling)
 		var tools []tool.BaseTool
 		for _, tid := range cfg.Tools {
 			n := findNode(tmpl.Nodes, tid)
@@ -43,37 +43,67 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 				continue
 			}
 			switch n.Type {
+			case model.NodeTypeCall:
+				tools = append(tools, newCodeNodeTool(n, state))
 			case model.NodeTypeCode:
 				tools = append(tools, newCodeNodeTool(n, state))
-			case model.NodeTypeHuman:
-				tools = append(tools, newHumanTaskTool(n, state))
 			}
 		}
 
-		// 4. Determine max iterations
+		// 4. Collect business context from Data edges
+		// Data edges connect extractor/code nodes to provide business info
+		var businessContext []string
+		for _, edge := range tmpl.Edges {
+			if edge.EdgeType != model.EdgeTypeData {
+				continue
+			}
+			// Determine which side provides the context data
+			contextID := edge.From
+			if edge.From == node.ID {
+				contextID = edge.To
+			}
+			n := findNode(tmpl.Nodes, contextID)
+			if n == nil {
+				continue
+			}
+			// Read the node's output from state
+			if data, ok := state[contextID]; ok {
+				dataJSON, _ := json.MarshalIndent(data, "", "  ")
+				businessContext = append(businessContext, fmt.Sprintf(
+					"## Data from %s (%s)\n```json\n%s\n```",
+					n.ID, n.Type, string(dataJSON),
+				))
+			}
+		}
+
+		// 5. Determine max iterations
 		maxTurns := cfg.MaxTurns
 		if maxTurns <= 0 {
 			maxTurns = 10
 		}
 
-		// 5. Set up the agent input
+		// 6. Set up the agent input with business context
 		stateJSON, _ := json.MarshalIndent(state, "", "  ")
-		inputMsg := fmt.Sprintf("Current workflow state:\n```json\n%s\n```\n\nAnalyze the situation and take appropriate actions. When you are done, provide a summary of what you did.", string(stateJSON))
+		inputMsg := fmt.Sprintf("Current workflow state:\n```json\n%s\n```", string(stateJSON))
+		if len(businessContext) > 0 {
+			inputMsg += "\n\nBusiness context:\n" + strings.Join(businessContext, "\n\n")
+		}
+		inputMsg += "\n\nAnalyze the situation and take appropriate actions. When you are done, provide a summary of what you did."
 
 		msgs := []*schema.Message{
 			{Role: "system", Content: cfg.SystemPrompt},
 			{Role: "user", Content: inputMsg},
 		}
 
-		// 6. Run the ReAct loop manually (avoids ADK Runner complexity)
+		// 7. Run the ReAct loop
 		result, err := runReAct(ctx, cm, msgs, tools, maxTurns)
 		if err != nil {
 			return nil, fmt.Errorf("agent node %s: %w", node.ID, err)
 		}
 
-		// 7. Store result in state
+		// 8. Store result in state
 		state[node.ID] = map[string]any{
-			"content":   result.Content,
+			"content":    result.Content,
 			"tool_calls": result.ToolCalls,
 		}
 		return state, nil
@@ -81,9 +111,7 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 }
 
 // runReAct implements a simple ReAct loop: model → tool calls → model → ...
-// Uses eino's schema.Message and tool.BaseTool for compatibility.
 func runReAct(ctx context.Context, cm *chatModel, msgs []*schema.Message, tools []tool.BaseTool, maxTurns int) (*schema.Message, error) {
-	// Build tool info list for the model
 	toolInfos := make([]*schema.ToolInfo, 0, len(tools))
 	toolMap := make(map[string]tool.BaseTool)
 	for _, t := range tools {
@@ -98,7 +126,6 @@ func runReAct(ctx context.Context, cm *chatModel, msgs []*schema.Message, tools 
 	var lastContent string
 
 	for turn := 0; turn < maxTurns; turn++ {
-		// Call the model
 		opts := []einomodel.Option{}
 		if len(toolInfos) > 0 {
 			opts = append(opts, einomodel.WithTools(toolInfos))
@@ -112,17 +139,13 @@ func runReAct(ctx context.Context, cm *chatModel, msgs []*schema.Message, tools 
 		msgs = append(msgs, resp)
 		lastContent = resp.Content
 
-		// Check if the model wants to call tools
 		if len(resp.ToolCalls) == 0 {
-			// No tool calls — agent is done
 			return resp, nil
 		}
 
-		// Execute each tool call
 		for _, tc := range resp.ToolCalls {
 			t, ok := toolMap[tc.Function.Name]
 			if !ok {
-				// Tool not found — return error message
 				msgs = append(msgs, &schema.Message{
 					Role:       "tool",
 					ToolCallID: tc.ID,
@@ -131,7 +154,6 @@ func runReAct(ctx context.Context, cm *chatModel, msgs []*schema.Message, tools 
 				continue
 			}
 
-			// Execute the tool
 			var toolResult string
 			invokable, ok := t.(tool.InvokableTool)
 			if !ok {
@@ -153,7 +175,6 @@ func runReAct(ctx context.Context, cm *chatModel, msgs []*schema.Message, tools 
 		}
 	}
 
-	// Max turns reached — return last response
 	return &schema.Message{
 		Role:    "assistant",
 		Content: fmt.Sprintf("Reached maximum turns (%d). Last response: %s", maxTurns, lastContent),
@@ -164,11 +185,10 @@ func runReAct(ctx context.Context, cm *chatModel, msgs []*schema.Message, tools 
 // Tool wrappers
 // ——————————————————————————————————————————————————————————————
 
-// codeNodeTool wraps a code node as an eino tool.BaseTool.
-// When the model calls this tool, it executes the node's webhook.
+// codeNodeTool wraps a call/code node as an eino tool.BaseTool.
 type codeNodeTool struct {
-	node  *model.Node
-	state map[string]any
+	node   *model.Node
+	state  map[string]any
 	client *http.Client
 }
 
@@ -183,36 +203,31 @@ func newCodeNodeTool(node *model.Node, state map[string]any) *codeNodeTool {
 func (t *codeNodeTool) Info(ctx context.Context) (*schema.ToolInfo, error) {
 	desc := t.node.Description
 	if desc == "" {
-		desc = fmt.Sprintf("Call %s API", t.node.ID)
+		desc = fmt.Sprintf("Call %s", t.node.ID)
 	}
-
 	return &schema.ToolInfo{
 		Name: t.node.ID,
 		Desc: desc,
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
 			"input": {
 				Type: schema.String,
-				Desc: "Input data for the API call (JSON string)",
+				Desc: "Input data (JSON string)",
 			},
 		}),
 	}, nil
 }
 
 func (t *codeNodeTool) InvokableRun(ctx context.Context, input string, opts ...tool.Option) (string, error) {
-	// Merge tool input with current state
 	bodyMap := make(map[string]any)
 	bodyMap["tool_input"] = input
 
-	// Try to parse the input as JSON and merge with state
 	var inputJSON map[string]any
 	if err := json.Unmarshal([]byte(input), &inputJSON); err == nil {
 		for k, v := range inputJSON {
 			bodyMap[k] = v
 		}
 	}
-
 	bodyMap["_state"] = t.state
-
 	body, _ := json.Marshal(bodyMap)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.node.WebhookURL, strings.NewReader(string(body)))
@@ -232,55 +247,9 @@ func (t *codeNodeTool) InvokableRun(ctx context.Context, input string, opts ...t
 		return "", fmt.Errorf("webhook returned %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	// Store result in state
 	var result any
 	if err := json.Unmarshal(respBody, &result); err == nil {
 		t.state[t.node.ID] = result
 	}
-
 	return string(respBody), nil
-}
-
-// humanTaskTool wraps a human node as a tool — when the agent calls it,
-// it creates a human task and pauses for input.
-// For MVP, this creates a simple task that requires manual approval.
-type humanTaskTool struct {
-	node  *model.Node
-	state map[string]any
-}
-
-func newHumanTaskTool(node *model.Node, state map[string]any) *humanTaskTool {
-	return &humanTaskTool{
-		node:  node,
-		state: state,
-	}
-}
-
-func (t *humanTaskTool) Info(ctx context.Context) (*schema.ToolInfo, error) {
-	desc := t.node.Description
-	if desc == "" {
-		desc = "Request human input"
-	}
-
-	return &schema.ToolInfo{
-		Name: t.node.ID,
-		Desc: desc,
-		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"request": {
-				Type: schema.String,
-				Desc: "What input is needed from the human",
-			},
-		}),
-	}, nil
-}
-
-func (t *humanTaskTool) InvokableRun(ctx context.Context, input string, opts ...tool.Option) (string, error) {
-	// For MVP, human tasks within agent tools return a placeholder
-	// In production, this would create a real HumanTask and pause
-	t.state[t.node.ID] = map[string]any{
-		"agent_request": input,
-		"status":        "pending_human_input",
-	}
-
-	return fmt.Sprintf("Human task created. Request: %s. Waiting for manual approval...", input), nil
 }

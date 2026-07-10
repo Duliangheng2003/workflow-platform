@@ -201,10 +201,14 @@ func (e *Engine) buildGraph(tmpl *model.Template) (*compose.Graph[map[string]any
 		}
 	}
 
-	// Phase 3: Add regular edges (skip condition nodes and their edges)
+	// Phase 3: Add regular edges (skip condition nodes and Data edges)
 	for _, edge := range tmpl.Edges {
 		// Skip edges involving condition nodes (they're handled by branches)
 		if condNodes[edge.From] || condNodes[edge.To] {
+			continue
+		}
+		// Skip Data edges (they don't participate in execution flow)
+		if edge.EdgeType == model.EdgeTypeData {
 			continue
 		}
 		from := edge.From
@@ -224,6 +228,9 @@ func (e *Engine) buildGraph(tmpl *model.Template) (*compose.Graph[map[string]any
 
 	// Phase 4: Connect START/END to adjacent nodes
 	for _, edge := range tmpl.Edges {
+		if edge.EdgeType == model.EdgeTypeData {
+			continue
+		}
 		if edge.From == "START" {
 			if !condNodes[edge.To] {
 				if err := g.AddEdge(compose.START, edge.To); err != nil {
@@ -246,8 +253,8 @@ func (e *Engine) buildGraph(tmpl *model.Template) (*compose.Graph[map[string]any
 // nodeToLambda creates the correct Lambda wrapper for a node.
 func (e *Engine) nodeToLambda(tmpl *model.Template, node *model.Node) (*compose.Lambda, error) {
 	switch node.Type {
-	case model.NodeTypeCode:
-		return compose.InvokableLambda(e.codeLambda(node)), nil
+	case model.NodeTypeCall:
+		return compose.InvokableLambda(e.callLambda(node)), nil
 	case model.NodeTypeLLM:
 		if node.LLMConfig == nil {
 			return nil, fmt.Errorf("llm node %s missing config", node.ID)
@@ -260,13 +267,17 @@ func (e *Engine) nodeToLambda(tmpl *model.Template, node *model.Node) (*compose.
 			return nil, fmt.Errorf("agent node %s missing config", node.ID)
 		}
 		return compose.InvokableLambda(e.agentLambda(tmpl, node)), nil
+	case model.NodeTypeCode:
+		return compose.InvokableLambda(e.codeLambda(node)), nil
+	case model.NodeTypeExtractor:
+		return compose.InvokableLambda(e.extractorLambda(node)), nil
 	}
 	return nil, fmt.Errorf("unsupported node type: %s", node.Type)
 }
 
 func findPredecessor(edges []model.Edge, nodeID string) string {
 	for _, e := range edges {
-		if e.To == nodeID {
+		if e.To == nodeID && e.EdgeType != model.EdgeTypeData {
 			return e.From
 		}
 	}
