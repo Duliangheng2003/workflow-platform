@@ -1,16 +1,18 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/cloudwego/eino/components/tool"
-	einomodel "github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
 
 	"github.com/Duliangheng2003/workflow-platform/internal/model"
@@ -46,7 +48,7 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 			case model.NodeTypeCall:
 				tools = append(tools, newCodeNodeTool(n, state))
 			case model.NodeTypeCode:
-				tools = append(tools, newCodeNodeTool(n, state))
+				tools = append(tools, newCodeScriptTool(n, state))
 			}
 		}
 
@@ -96,7 +98,21 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 		}
 
 		// 7. Run the ReAct loop
-		result, err := runReAct(ctx, cm, msgs, tools, maxTurns)
+		// 7. Run the ReAct loop using eino's built-in react agent
+		reactAgent, err := react.NewAgent(ctx, &react.AgentConfig{
+			ToolCallingModel: cm,
+			MaxStep:          maxTurns + 1,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("agent node %s: create react agent: %w", node.ID, err)
+		}
+
+		toolOpts, err := react.WithTools(ctx, tools...)
+		if err != nil {
+			return nil, fmt.Errorf("agent node %s: configure tools: %w", node.ID, err)
+		}
+
+		result, err := reactAgent.Generate(ctx, msgs, toolOpts...)
 		if err != nil {
 			return nil, fmt.Errorf("agent node %s: %w", node.ID, err)
 		}
@@ -108,77 +124,6 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 		}
 		return state, nil
 	}
-}
-
-// runReAct implements a simple ReAct loop: model → tool calls → model → ...
-func runReAct(ctx context.Context, cm *chatModel, msgs []*schema.Message, tools []tool.BaseTool, maxTurns int) (*schema.Message, error) {
-	toolInfos := make([]*schema.ToolInfo, 0, len(tools))
-	toolMap := make(map[string]tool.BaseTool)
-	for _, t := range tools {
-		info, err := t.Info(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("tool info: %w", err)
-		}
-		toolInfos = append(toolInfos, info)
-		toolMap[info.Name] = t
-	}
-
-	var lastContent string
-
-	for turn := 0; turn < maxTurns; turn++ {
-		opts := []einomodel.Option{}
-		if len(toolInfos) > 0 {
-			opts = append(opts, einomodel.WithTools(toolInfos))
-		}
-
-		resp, err := cm.Generate(ctx, msgs, opts...)
-		if err != nil {
-			return nil, fmt.Errorf("model call (turn %d): %w", turn, err)
-		}
-
-		msgs = append(msgs, resp)
-		lastContent = resp.Content
-
-		if len(resp.ToolCalls) == 0 {
-			return resp, nil
-		}
-
-		for _, tc := range resp.ToolCalls {
-			t, ok := toolMap[tc.Function.Name]
-			if !ok {
-				msgs = append(msgs, &schema.Message{
-					Role:       "tool",
-					ToolCallID: tc.ID,
-					Content:    fmt.Sprintf("Error: tool '%s' not found", tc.Function.Name),
-				})
-				continue
-			}
-
-			var toolResult string
-			invokable, ok := t.(tool.InvokableTool)
-			if !ok {
-				toolResult = fmt.Sprintf("Error: tool '%s' does not support execution", tc.Function.Name)
-			} else {
-				r, e := invokable.InvokableRun(ctx, tc.Function.Arguments)
-				if e != nil {
-					toolResult = fmt.Sprintf("Error: %v", e)
-				} else {
-					toolResult = r
-				}
-			}
-
-			msgs = append(msgs, &schema.Message{
-				Role:       "tool",
-				ToolCallID: tc.ID,
-				Content:    toolResult,
-			})
-		}
-	}
-
-	return &schema.Message{
-		Role:    "assistant",
-		Content: fmt.Sprintf("Reached maximum turns (%d). Last response: %s", maxTurns, lastContent),
-	}, nil
 }
 
 // ——————————————————————————————————————————————————————————————
@@ -252,4 +197,69 @@ func (t *codeNodeTool) InvokableRun(ctx context.Context, input string, opts ...t
 		t.state[t.node.ID] = result
 	}
 	return string(respBody), nil
+}
+// codeScriptTool wraps a code node as an eino tool — when the Agent calls it,
+// it executes the JS/Python script with the Agent's input and returns the output.
+type codeScriptTool struct {
+	node  *model.Node
+	state map[string]any
+}
+
+func newCodeScriptTool(node *model.Node, state map[string]any) *codeScriptTool {
+	return &codeScriptTool{
+		node:  node,
+		state: state,
+	}
+}
+
+func (t *codeScriptTool) Info(ctx context.Context) (*schema.ToolInfo, error) {
+	desc := t.node.Description
+	if desc == "" {
+		desc = fmt.Sprintf("Execute %s script", t.node.ID)
+	}
+	return &schema.ToolInfo{
+		Name: t.node.ID,
+		Desc: desc,
+		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
+			"input": {
+				Type: schema.String,
+				Desc: "Input data for the script (JSON string)",
+			},
+		}),
+	}, nil
+}
+
+func (t *codeScriptTool) InvokableRun(ctx context.Context, input string, opts ...tool.Option) (string, error) {
+	script := t.node.Code
+	lang := t.node.Language
+	if lang == "" {
+		lang = "js"
+	}
+
+	var cmd *exec.Cmd
+	switch lang {
+	case "js", "javascript":
+		wrapped := fmt.Sprintf("const input = %s; %s", input, script)
+		cmd = exec.CommandContext(ctx, "node", "-e", wrapped)
+	case "python", "py":
+		escaped := strings.ReplaceAll(input, "'", "'\\''")
+		code := fmt.Sprintf("import json; input = json.loads('%s'); %s", escaped, script)
+		cmd = exec.CommandContext(ctx, "python3", "-c", code)
+	default:
+		return "", fmt.Errorf("unsupported language: %s", lang)
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("script error: %v\nstderr: %s", err, stderr.String())
+	}
+
+	result := strings.TrimSpace(stdout.String())
+	if stderr.Len() > 0 {
+		result += "\n// stderr: " + strings.TrimSpace(stderr.String())
+	}
+	return result, nil
 }

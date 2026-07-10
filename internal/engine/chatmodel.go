@@ -16,12 +16,13 @@ import (
 	"github.com/Duliangheng2003/workflow-platform/internal/config"
 )
 
-// chatModel implements eino's model.BaseChatModel by wrapping our
-// server-side LLM API client. This allows the ADK's ChatModelAgent
+// chatModel implements eino's model.ToolCallingChatModel by wrapping our
+// server-side LLM API client. This allows the eino react agent
 // to use providers configured in config.yaml without needing eino-ext.
 type chatModel struct {
-	profile *config.LLMProfile
-	client  *http.Client
+	profile   *config.LLMProfile
+	client    *http.Client
+	toolInfos []*schema.ToolInfo
 }
 
 func newChatModel(profile *config.LLMProfile) *chatModel {
@@ -31,7 +32,19 @@ func newChatModel(profile *config.LLMProfile) *chatModel {
 	}
 }
 
+// WithTools implements model.ToolCallingChatModel.
+// Returns a new chatModel with the given tools attached, safe for concurrent use.
+func (m *chatModel) WithTools(tools []*schema.ToolInfo) (model.ToolCallingChatModel, error) {
+	newModel := &chatModel{
+		profile:   m.profile,
+		client:    m.client,
+		toolInfos: tools,
+	}
+	return newModel, nil
+}
+
 // Generate implements model.BaseChatModel.
+// Uses tools from the store (set by WithTools) or from options.var chatModel
 func (m *chatModel) Generate(ctx context.Context, msgs []*schema.Message, opts ...model.Option) (*schema.Message, error) {
 	// Collect options
 	opt := model.GetCommonOptions(nil, opts...)
@@ -73,8 +86,12 @@ func (m *chatModel) Generate(ctx context.Context, msgs []*schema.Message, opts .
 		"messages": apiMessages,
 	}
 
-	// Add tool definitions if provided via options
-	if len(opt.Tools) > 0 {
+	// Add tool definitions if provided
+	tools := opt.Tools
+	if len(tools) == 0 {
+		tools = m.toolInfos
+	}
+	if len(tools) > 0 {
 		toolsList := make([]map[string]any, 0, len(opt.Tools))
 		for _, ti := range opt.Tools {
 			toolsList = append(toolsList, toolInfoToOpenAI(ti))

@@ -54,9 +54,10 @@ type Node struct {
 	Language string `json:"language,omitempty"` // "js" or "python"
 	Code     string `json:"code,omitempty"`     // script content
 	// extractor node fields
-	FileContent  string `json:"file_content,omitempty"`  // base64 encoded file content
-	FileName     string `json:"file_name,omitempty"`     // original file name
-	ExtractPrompt string `json:"extract_prompt,omitempty"` // custom extraction prompt
+	FileContent    string `json:"file_content,omitempty"`
+	FileName       string `json:"file_name,omitempty"`
+	ExtractPrompt  string `json:"extract_prompt,omitempty"`
+	LLMProfile     string `json:"llm_profile,omitempty"` // LLM profile for extraction
 }
 
 // EdgeType defines the type of a workflow edge.

@@ -238,20 +238,49 @@ func (e *Engine) codeLambda(node *model.Node) func(context.Context, map[string]a
 	}
 }
 
-// extractorLambda creates a Lambda that extracts data from uploaded files.
-// The extracted data is formatted as AI-friendly context.
+// extractorLambda creates a Lambda that uses an LLM to extract
+// structured information from uploaded files and passes the result
+// to the Agent via Data edge.
 func (e *Engine) extractorLambda(node *model.Node) func(context.Context, map[string]any) (map[string]any, error) {
 	return func(ctx context.Context, state map[string]any) (map[string]any, error) {
-		// For MVP, return the uploaded file metadata as extracted context
-		// In production, this would use an LLM to extract structured info
-		extracted := map[string]any{
-			"file_name":    node.FileName,
-			"extract_prompt": node.ExtractPrompt,
-			"content_preview": node.FileContent,
+		if node.LLMProfile == "" {
+			// No LLM configured, return raw file info
+			state[node.ID] = map[string]any{
+				"file_name": node.FileName,
+				"summary":   fmt.Sprintf("File: %s (no LLM configured for extraction)", node.FileName),
+			}
+			return state, nil
 		}
+
+		profile, err := e.llmProfiles.LookupProfile(node.LLMProfile)
+		if err != nil {
+			return nil, fmt.Errorf("extractor %s: %w", node.ID, err)
+		}
+
+		// Build the extraction prompt
+		extractPrompt := node.ExtractPrompt
+		if extractPrompt == "" {
+			extractPrompt = "Extract key information from this file and provide a concise summary."
+		}
+
+		userPrompt := fmt.Sprintf("File name: %s\n\nFile content:\n%s\n\nTask: %s",
+			node.FileName, node.FileContent, extractPrompt)
+
+		systemPrompt := "You are a data extraction assistant. Extract and organize the key information from the provided file content. Return a structured summary."
+
+		content, err := callLLM(ctx, profile, systemPrompt, userPrompt, 0.3, 4096)
+		if err != nil {
+			// Fallback: return raw info if LLM fails
+			state[node.ID] = map[string]any{
+				"file_name": node.FileName,
+				"summary":   fmt.Sprintf("File: %s (extraction failed: %s)", node.FileName, err.Error()),
+			}
+			return state, nil
+		}
+
 		state[node.ID] = map[string]any{
-			"extracted_context": extracted,
-			"summary": fmt.Sprintf("Extracted from %s: ready for AI processing", node.FileName),
+			"file_name": node.FileName,
+			"summary":   content,
 		}
 		return state, nil
 	}
