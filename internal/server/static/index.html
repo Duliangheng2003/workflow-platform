@@ -105,6 +105,21 @@
 <div id="modal-instance" class="modal-overlay"><div class="modal" style="max-width:700px;"><h2>Instance Detail</h2><div id="instance-detail">Loading...</div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-instance')">Close</button></div></div></div>
 <div id="modal-resume" class="modal-overlay"><div class="modal" style="max-width:520px;"><h2>Handle Task</h2><div id="task-detail">Loading...</div><div class="form-group"><label>Result (JSON)</label><textarea id="resume-data" rows="4" style="font-family:monospace;font-size:0.8rem;">{"approved":true,"comment":""}</textarea></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-resume')">Cancel</button><button class="btn btn-danger" onclick="resumeTask('reject')">Reject</button><button class="btn btn-success" onclick="resumeTask('approve')">Approve</button></div></div></div>
 
+	<!-- Toast Container -->
+	<div id="toast-container"></div>
+
+	<!-- Custom Confirm Dialog -->
+	<div id="confirm-dialog" class="modal-overlay">
+	  <div class="modal">
+	    <div class="confirm-icon" id="confirm-icon">&#9888;</div>
+	    <div class="confirm-message" id="confirm-message">Are you sure?</div>
+	    <div class="modal-actions">
+	      <button class="btn btn-outline" onclick="closeConfirm(false)">Cancel</button>
+	      <button class="btn btn-danger" onclick="closeConfirm(true)" id="confirm-ok-btn">Confirm</button>
+	    </div>
+	  </div>
+	</div>
+
 <script src="app.js"></script>
 </body>
 </html>

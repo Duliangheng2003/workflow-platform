@@ -3,6 +3,34 @@ var templates=[],_currentTaskId='',_canvasInited=false,_connectFrom=null;
 
 function api(p,o){return fetch(API+p,{headers:{'Content-Type':'application/json'},...o}).then(function(r){return r.status===204?{}:r.json().catch(function(){return{};});});}
 
+// ===== Toast Notification System =====
+function showToast(msg, type){
+  type=type||'info';
+  var container=document.getElementById('toast-container');
+  if(!container){container=document.createElement('div');container.id='toast-container';container.style.cssText='position:fixed;top:70px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none';document.body.appendChild(container);}
+  var icons={success:'✓',error:'✗',warning:'⚠',info:'ⓘ'};
+  var toast=document.createElement('div');
+  toast.className='toast toast-'+type;
+  toast.innerHTML='<span class="toast-icon">'+(icons[type]||'')+'</span><span>'+msg+'</span>';
+  toast.style.pointerEvents='auto';
+  container.appendChild(toast);
+  setTimeout(function(){toast.classList.add('toast-remove');setTimeout(function(){if(toast.parentNode)toast.parentNode.removeChild(toast);},250);},3000);
+}
+// ===== Custom Confirm Dialog =====
+var _confirmCallback=null;
+function showConfirm(msg, cb, okLabel){
+  document.getElementById('confirm-message').textContent=msg;
+  document.getElementById('confirm-icon').innerHTML='&#9888;';
+  var okBtn=document.getElementById('confirm-ok-btn');
+  okBtn.textContent=okLabel||'Confirm';
+  _confirmCallback=cb;
+  openModal('confirm-dialog');
+}
+function closeConfirm(val){
+  closeModal('confirm-dialog');
+  if(_confirmCallback){_confirmCallback(val);_confirmCallback=null;}
+}
+
 function showPage(n){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('nav a').forEach(function(a){a.classList.remove('active');});
@@ -212,7 +240,7 @@ function initCanvas(){
             var out=builderEdges.filter(function(x){return x.from===_connectFrom&&x.edge_type!=='data';}).length;
             var in_=builderEdges.filter(function(x){return x.to===id&&x.edge_type!=='data';}).length;
             if(out<4&&in_<2){var etype=_connectEdgeType||'flow';builderEdges.push({from:_connectFrom,to:id,edge_type:etype});_connectEdgeType='flow';renderCanvas();showProperties();}
-            else alert('Connection limit: max 4 outgoing, 2 incoming');
+            else showToast('Connection limit: max 4 outgoing, 2 incoming', 'warning');
           }
         }
       }
@@ -285,7 +313,7 @@ function editEdgeType(fromId,toId){
   var edge=builderEdges.find(function(e){return e.from===fromId&&e.to===toId;});
   if(!edge)return;
   var srcNode=builderNodes.find(function(n){return n.id===fromId;});
-  if(!srcNode||(srcNode.type!=='agent'&&srcNode.type!=='extractor')){alert('Only edges from Agent or Extractor nodes can be changed to Data type.');return;}
+  if(!srcNode||(srcNode.type!=='agent'&&srcNode.type!=='extractor')){showToast('Only edges from Agent or Extractor nodes can be changed to Data type.', 'warning');return;}
   var popup=document.getElementById('edge-type-popup');
   if(!popup){
     popup=document.createElement('div');
@@ -318,20 +346,20 @@ var localTemplates = [];
 
 function saveWorkflow(){
   var name=document.getElementById('save-name').value.trim();
-  if(!name){alert('Workflow name is required');return;}
-  if(builderNodes.length===0){alert('Add at least one node');return;}
+  if(!name){showToast('Workflow name is required', 'error');return;}
+  if(builderNodes.length===0){showToast('Add at least one node', 'error');return;}
   closeModal('save-popup');
   var edges=builderEdges.map(function(e){var r={from:e.from,to:e.to};if(e.edge_type)r.edge_type=e.edge_type;return r;});
   var body={name:name,description:document.getElementById('save-desc').value.trim(),nodes:builderNodes,edges:edges,start_type:_startType};
   if(_startType==='Schedule'&&_cronExpr)body.cron_expr=_cronExpr;
   api('/api/v1/templates',{method:'POST',body:JSON.stringify(body)}).then(function(r){
-    if(r&&r.id){alert('Workflow saved!');showPage('templates');}
-    else{alert('Save failed: server not available');}
+    if(r&&r.id){showToast('Workflow saved!', 'success');showPage('templates');}
+    else{showToast('Save failed: server not available', 'error');}
   });
 }
 
 function testRunWorkflow(){
-  if(builderNodes.length===0){alert('Add at least one node first');return;}
+  if(builderNodes.length===0){showToast('Add at least one node first', 'error');return;}
   _testResults={};
   _testRunning=true;
   _testLog=[];
@@ -449,18 +477,20 @@ function showTestPanel(msg){
 // ===== Other Pages =====
 function loadTemplates(){api('/api/v1/templates').then(function(d){templates=Array.isArray(d)?d:[];var t=document.getElementById('template-list');if(templates.length===0){t.innerHTML='<tr><td colspan="6" class="empty-state"><p>No templates yet.</p></td></tr>';return;}t.innerHTML=templates.map(function(x){var st=x.start_type||'User Input';var badge=st==='Schedule'?'<span class="badge" style="background:#fef3c7;color:#92400e;">Schedule</span>':'<span class="badge" style="background:#dbeafe;color:#1d4ed8;">Manual</span>';return'<tr><td><strong>'+esc(x.name)+'</strong><br><span style="font-size:0.75rem;color:#94a3b8;">'+esc(x.description||'')+'</span></td><td>'+badge+'</td><td>'+(x.nodes||[]).length+' nodes</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.last_run_at)+'</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.created_at)+'</td><td style="text-align:right;"><button class="btn btn-sm btn-primary" onclick="startInstance(\''+x.id+'\')">Run</button> <button class="btn btn-sm btn-danger" onclick="deleteTemplate(\''+x.id+'\')">Delete</button></td></tr>';}).join('');});}
 function deleteTemplate(id){
-  if(!confirm('Delete this template?'))return;
-  localTemplates=localTemplates.filter(function(t){return t.id!==id;});
-  api('/api/v1/templates/'+id,{method:'DELETE'}).then(function(){loadTemplates();});
+  showConfirm('Delete this template?', function(ok){
+    if(!ok)return;
+    localTemplates=localTemplates.filter(function(t){return t.id!==id;});
+    api('/api/v1/templates/'+id,{method:'DELETE'}).then(function(){loadTemplates();});
+  }, 'Delete');
 }
 function startInstance(id){
   var localTpl=localTemplates.find(function(t){return t.id===id;});
   if(localTpl){
-    alert('Local workflow run (simulated):\nTemplate: '+localTpl.name+'\nNodes: '+localTpl.nodes.length+'\nEdges: '+localTpl.edges.length);
+    showToast('Running local workflow: '+localTpl.name, 'info');
     return;
   }
-  var i=prompt('Initial data (JSON):','{}');if(i===null)return;try{var d=JSON.parse(i||'{}');}catch(e){alert('Invalid JSON');return;}api('/api/v1/templates/'+id+'/instances',{method:'POST',body:JSON.stringify({input:d})}).then(function(r){
-  if(!r||!r.id){alert('Failed to start instance');return;}
+  var d={};api('/api/v1/templates/'+id+'/instances',{method:'POST',body:JSON.stringify({input:d})}).then(function(r){
+  if(!r||!r.id){showToast('Failed to start instance', 'error');return;}
   var instId=r.id;
   // Open thinking panel
   var panel=document.getElementById('live-thinking');
@@ -509,7 +539,7 @@ function startInstance(id){
 function loadInstances(){api('/api/v1/instances').then(function(d){var l=document.getElementById('instance-list');if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr>';return;}l.innerHTML=d.map(function(i){return'<tr><td><code>'+shortId(i.id)+'</code></td><td>'+esc(i.template_id)+'</td><td><span class="badge badge-'+i.status+'">'+i.status+'</span></td><td>'+(i.current_node_id||'-')+'</td><td>'+fmtTime(i.created_at)+'</td><td><button class="btn btn-xs btn-outline" onclick="showInstance(\''+i.id+'\')">Detail</button></td></tr>';}).join('');});}
 function showInstance(id){api('/api/v1/instances/'+id).then(function(i){var h='<div class="detail-grid"><div><div class="detail-label">ID</div><div class="detail-value"><code>'+i.id+'</code></div></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="badge badge-'+i.status+'">'+i.status+'</span></div></div><div><div class="detail-label">Template</div><div class="detail-value">'+i.template_id+'</div></div><div><div class="detail-label">Current Node</div><div class="detail-value">'+(i.current_node_id||'-')+'</div></div></div>'+(i.error?'<div style="background:#fef2f2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;">'+esc(i.error)+'</div>':'');if(i.state){var _tf=false;for(var _k in i.state){if(_k.indexOf('_thinking')>0){if(!_tf){h+='<div style="margin-top:12px;"><div class="detail-label" style="margin-bottom:6px;">Agent Thinking</div>';_tf=true;}h+='<div style="background:#f8fafc;border-radius:6px;padding:10px;margin-bottom:8px;font-family:monospace;font-size:0.78rem;line-height:1.6;">';var _steps=i.state[_k];if(Array.isArray(_steps)){_steps.forEach(function(s){h+='<div style="color:#1a1a2e;margin-bottom:2px;">'+esc(s)+'</div>';});}h+='</div>';}}if(_tf)h+='</div>';}h+='<div style="margin-top:8px;"><div class="detail-label">State</div><div class="json-box">'+JSON.stringify(i.state||{},null,2)+'</div></div><div style="margin-top:8px;"><div class="detail-label">Node States</div><div class="json-box">'+JSON.stringify(i.node_states||{},null,2)+'</div></div>';document.getElementById('instance-detail').innerHTML=h;openModal('modal-instance');});}
 function loadTasks(s){var u='/api/v1/human-tasks';if(s)u+='?status='+s;api(u).then(function(d){var l=document.getElementById('task-list');if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No tasks.</p></td></tr>';return;}l.innerHTML=d.map(function(t){return'<tr><td><code>'+shortId(t.id)+'</code></td><td>'+esc(t.node_description)+'</td><td>'+esc(t.assignee_group||'-')+'</td><td><span class="badge badge-'+t.status+'">'+t.status+'</span></td><td>'+fmtTime(t.created_at)+'</td><td>'+(t.status==='pending'?'<button class="btn btn-xs btn-primary" onclick="openResume(\''+t.id+'\')">Handle</button>':'Done')+'</td></tr>';}).join('');});}
-function openResume(id){_currentTaskId=id;api('/api/v1/human-tasks?status=pending').then(function(t){var task=Array.isArray(t)?t.find(function(x){return x.id===id;}):null;if(!task){alert('Task not found');return;}document.getElementById('task-detail').innerHTML='<div class="detail-grid"><div><div class="detail-label">Node</div><div class="detail-value">'+esc(task.node_description)+'</div></div><div><div class="detail-label">Assignee</div><div class="detail-value">'+esc(task.assignee_group||'-')+'</div></div></div><div style="margin-top:8px;margin-bottom:12px;"><div class="detail-label">Input Data</div><div class="json-box">'+JSON.stringify(task.input_data||{},null,2)+'</div></div>';openModal('modal-resume');});}
+function openResume(id){_currentTaskId=id;api('/api/v1/human-tasks?status=pending').then(function(t){var task=Array.isArray(t)?t.find(function(x){return x.id===id;}):null;if(!task){showToast('Task not found', 'error');return;}document.getElementById('task-detail').innerHTML='<div class="detail-grid"><div><div class="detail-label">Node</div><div class="detail-value">'+esc(task.node_description)+'</div></div><div><div class="detail-label">Assignee</div><div class="detail-value">'+esc(task.assignee_group||'-')+'</div></div></div><div style="margin-top:8px;margin-bottom:12px;"><div class="detail-label">Input Data</div><div class="json-box">'+JSON.stringify(task.input_data||{},null,2)+'</div></div>';openModal('modal-resume');});}
 function resumeTask(a){var r;try{r=JSON.parse(document.getElementById('resume-data').value);}catch(e){r={comment:document.getElementById('resume-data').value};}api('/api/v1/human-tasks/'+_currentTaskId+'/resume',{method:'POST',body:JSON.stringify({action:a,result:r})}).then(function(){closeModal('modal-resume');loadTasks('pending');});}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function shortId(id){return id?id.substring(0,10)+'...':'-';}
