@@ -1,5 +1,5 @@
 var API='',builderNodes=[],builderEdges=[],selectedNodeId=null,nodePositions={};
-var templates=[],_canvasInited=false,_connectFrom=null;
+var templates=[],_canvasInited=false,_connectFrom=null,_instancesPollTimer=null;
 
 function api(p,o){return fetch(API+p,{headers:{'Content-Type':'application/json'},...o}).then(function(r){return r.status===204?{}:r.json().catch(function(){return{};});});}
 
@@ -37,6 +37,8 @@ function showPage(n){
   var el=document.getElementById('page-'+n);if(el)el.classList.add('active');
   var ln=document.querySelector('nav a[data-page="'+n+'"]');if(ln)ln.classList.add('active');
   if(n==='templates')loadTemplates();if(n==='instances')loadInstances();
+  // Stop instance poll timer when leaving instances page
+  if(n!=='instances'&&_instancesPollTimer){clearInterval(_instancesPollTimer);_instancesPollTimer=null;}
 }
 function closeModal(id){document.getElementById(id).classList.remove('active');}
 function openModal(id){document.getElementById(id).classList.add('active');}
@@ -51,8 +53,6 @@ function openBuilder(existingData){
     _cronExpr=existingData.cron_expr||'';
     (existingData.nodes||[]).forEach(function(n){builderNodes.push(JSON.parse(JSON.stringify(n)));});
     (existingData.edges||[]).forEach(function(e){builderEdges.push(JSON.parse(JSON.stringify(e)));});
-    // Restore node positions from saved positions or use auto-layout
-    if(existingData._positions){nodePositions=JSON.parse(JSON.stringify(existingData._positions));}
     document.getElementById('builder-title').textContent='Edit: '+esc(existingData.name);
   } else {
     _startType='User Input';_cronExpr='';
@@ -61,7 +61,10 @@ function openBuilder(existingData){
   renderCanvas();showPage('builder');
   setTimeout(initCanvas,100);setTimeout(centerView,200);
 }
-function closeBuilder(){showPage('templates');}
+function closeBuilder(){
+  _editingTemplateId=null;
+  showPage('templates');
+}
 function toggleRight(){document.getElementById('builder-right').classList.toggle('collapsed');}
 function toggleAddPopup(){document.getElementById('add-popup').classList.toggle('active');}
 
@@ -137,14 +140,15 @@ function calcLayout(){
   }
   var byLevel={};Object.keys(levels).forEach(function(id){var lv=levels[id];if(!byLevel[lv])byLevel[lv]=[];byLevel[lv].push(id);});
   var pos={},GAP=220,GAPY=100;
+  // START node at left, then levels to the right
+  pos._start=nodePositions['_start']||{x:60,y:260};
   Object.keys(byLevel).forEach(function(lv){
     var ids=byLevel[lv],startY=260-(ids.length-1)*GAPY/2;
     ids.forEach(function(id,i){
       if(nodePositions[id])pos[id]=nodePositions[id];
-      else pos[id]={x:(parseInt(lv)+1)*GAP,y:startY+i*GAPY};
+      else pos[id]={x:(parseInt(lv)+1)*GAP+60,y:startY+i*GAPY};
     });
   });
-  pos._start=nodePositions['_start']||{x:2500,y:300};
   return pos;
 }
 
@@ -169,7 +173,8 @@ function drawConnections(pos){
 
 function centerView(){
   var c=document.getElementById('builder-canvas');if(!c)return;
-  c.scrollLeft=2500- c.clientWidth/2;c.scrollTop=Math.max(0,300-c.clientHeight/2);
+  // Center on the nodes area (left side of canvas)
+  c.scrollLeft=0;c.scrollTop=Math.max(0,200-c.clientHeight/2);
 }
 
 // ===== Canvas Interactions =====
@@ -349,10 +354,13 @@ function changeEdgeType(fromId,toId,newType){
 }
 
 function openSavePopup(){
+  var isEditing=!!_editingTemplateId;
+  document.getElementById('save-popup-title').textContent=isEditing?'Update Workflow':'Save Workflow';
+  document.getElementById('save-popup-btn').textContent=isEditing?'Update':'Save';
   document.getElementById('save-name').value='';
   document.getElementById('save-desc').value='';
   // Pre-fill name/description when editing
-  if(_editingTemplateId){
+  if(isEditing){
     var tmpl=templates.find(function(t){return t.id===_editingTemplateId;});
     if(tmpl){
       document.getElementById('save-name').value=tmpl.name;
@@ -530,60 +538,67 @@ function startInstance(id){
   }
   var d={};api('/api/v1/templates/'+id+'/instances',{method:'POST',body:JSON.stringify({input:d})}).then(function(r){
   if(!r||!r.id){showToast('Failed to start instance', 'error');return;}
-  var instId=r.id;
-  // Open thinking panel
-  var panel=document.getElementById('live-thinking');
-  if(!panel){
-    panel=document.createElement('div');
-    panel.id='live-thinking';
-    panel.style.cssText='position:fixed;top:56px;right:0;bottom:0;width:360px;z-index:100;background:#fff;border-left:1px solid #e2e8f0;display:flex;flex-direction:column;box-shadow:-4px 0 12px rgba(0,0,0,0.08);animation:slidein 0.25s ease;';
-    panel.innerHTML='<div style="padding:12px 14px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;">Running Instance</span><span id="live-status" class="badge badge-running">running</span></div><div id="live-thinking-body" style="padding:14px;flex:1;overflow-y:auto;font-size:0.85rem;"><div style="text-align:center;padding:20px;color:#94a3b8;">Waiting for Agent...</div></div><div style="padding:10px 14px;border-top:1px solid #e2e8f0;"><button class="btn btn-sm btn-outline" onclick="document.getElementById(\'live-thinking\').remove()">Close</button> <button class="btn btn-sm btn-primary" onclick="showInstance(\''+instId+'\')">Detail</button></div>';
-    document.body.appendChild(panel);
-  }
-  var body=document.getElementById('live-thinking-body');
-  var seen=0;
-  var pollTimer=setInterval(function(){
-    api('/api/v1/instances/'+instId+'/thinking').then(function(resp){
-      if(!resp||!resp.thinking)return;
-      var steps=resp.thinking;
-      if(steps.length>seen){
-        if(seen===0)body.innerHTML='';
-        for(var j=seen;j<steps.length;j++){
-          var s=steps[j];
-          var cls='';
-          if(s.indexOf('Action:')===0)cls='color:#8b5cf6;';
-          else if(s.indexOf('Tool result:')===0)cls='color:#059669;';
-          else if(s.indexOf('Thinking:')===0)cls='color:#1a1a2e;';
-          body.innerHTML+='<div style="'+cls+'margin-bottom:6px;padding:4px 8px;background:#f8fafc;border-radius:4px;font-family:monospace;font-size:0.78rem;line-height:1.5;">'+esc(s)+'</div>';
-        }
-        seen=steps.length;
-        body.scrollTop=body.scrollHeight;
-      }
-    });
-    // Check if instance completed
-    api('/api/v1/instances/'+instId).then(function(inst){
-      if(inst&&inst.status!=='running'&&inst.status!=='pending'){
-        clearInterval(pollTimer);
-        var badge=document.getElementById('live-status');
-        if(badge){
-          badge.className='badge badge-'+(inst.status||'completed');
-          badge.textContent=inst.status||'completed';
-        }
-        body.innerHTML+='<div style="margin-top:12px;padding:8px;background:#f8fafc;border-radius:4px;color:'+(inst.status==='failed'?'#dc2626':'#059669')+';font-weight:600;text-align:center;">Workflow '+(inst.status||'completed')+'</div>';
-      }
-    });
-  },1000);
+  showToast('Instance started', 'success');
   showPage('instances');
 });}
-function loadInstances(){api('/api/v1/instances').then(function(d){var l=document.getElementById('instance-list');if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr>';return;}l.innerHTML=d.map(function(i){return'<tr><td><code>'+shortId(i.id)+'</code></td><td>'+esc(i.template_id)+'</td><td><span class="badge badge-'+i.status+'">'+i.status+'</span></td><td>'+(i.current_node_id||'-')+'</td><td>'+fmtTime(i.created_at)+'</td><td><button class="btn btn-xs btn-outline" onclick="showInstance(\''+i.id+'\')">Detail</button> <button class="btn btn-xs btn-danger" onclick="deleteInstance(\''+i.id+'\')">Delete</button></td></tr>';}).join('');});}
+function loadInstances(){
+  // Build template name map
+  var tmplMap={};
+  (templates||[]).forEach(function(t){tmplMap[t.id]=t.name;});
+  api('/api/v1/instances').then(function(d){
+    // If template map is empty, try fetching templates
+    if(Object.keys(tmplMap).length===0 && Array.isArray(d) && d.length>0){
+      api('/api/v1/templates').then(function(tmpls){
+        if(Array.isArray(tmpls)){tmpls.forEach(function(t){tmplMap[t.id]=t.name;});}
+        renderInstanceList(d, tmplMap);
+      });
+    } else {
+      renderInstanceList(d, tmplMap);
+    }
+    // Auto-refresh while any instance is running
+    var hasRunning=false;
+    if(Array.isArray(d)){d.forEach(function(i){if(i.status==='running'||i.status==='pending')hasRunning=true;});}
+    if(hasRunning){
+      if(!_instancesPollTimer){_instancesPollTimer=setInterval(loadInstances,3000);}
+    } else {
+      if(_instancesPollTimer){clearInterval(_instancesPollTimer);_instancesPollTimer=null;}
+    }
+  });
+}
+function renderInstanceList(d, tmplMap){
+  var l=document.getElementById('instance-list');
+  if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr>';return;}
+  l.innerHTML=d.map(function(i){return'<tr><td><code>'+shortId(i.id)+'</code></td><td>'+esc(tmplMap[i.template_id]||i.template_id)+'</td><td><span class="badge badge-'+i.status+'">'+i.status+'</span></td><td>'+(i.current_node_id||'-')+'</td><td>'+fmtTime(i.created_at)+'</td><td><button class="btn btn-xs btn-outline" onclick="showInstance(\''+i.id+'\')">Detail</button> <button class="btn btn-xs btn-danger" onclick="deleteInstance(\''+i.id+'\')">Delete</button></td></tr>';}).join('');
+}
 function deleteInstance(id){
   showConfirm('Delete this instance?', function(ok){
     if(!ok)return;
     api('/api/v1/instances/'+id,{method:'DELETE'}).then(function(){loadInstances();showToast('Instance deleted', 'success');});
   }, 'Delete');
 }
-function showInstance(id){api('/api/v1/instances/'+id).then(function(i){var h='<div class="detail-grid"><div><div class="detail-label">ID</div><div class="detail-value"><code>'+i.id+'</code></div></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="badge badge-'+i.status+'">'+i.status+'</span></div></div><div><div class="detail-label">Template</div><div class="detail-value">'+i.template_id+'</div></div><div><div class="detail-label">Current Node</div><div class="detail-value">'+(i.current_node_id||'-')+'</div></div></div>'+(i.error?'<div style="background:#fef2f2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;">'+esc(i.error)+'</div>':'');if(i.state){var _tf=false;for(var _k in i.state){if(_k.indexOf('_thinking')>0){if(!_tf){h+='<div style="margin-top:12px;"><div class="detail-label" style="margin-bottom:6px;">Agent Thinking</div>';_tf=true;}h+='<div style="background:#f8fafc;border-radius:6px;padding:10px;margin-bottom:8px;font-family:monospace;font-size:0.78rem;line-height:1.6;">';var _steps=i.state[_k];if(Array.isArray(_steps)){_steps.forEach(function(s){h+='<div style="color:#1a1a2e;margin-bottom:2px;">'+esc(s)+'</div>';});}h+='</div>';}}if(_tf)h+='</div>';}h+='<div style="margin-top:8px;"><div class="detail-label">State</div><div class="json-box">'+JSON.stringify(i.state||{},null,2)+'</div></div><div style="margin-top:8px;"><div class="detail-label">Node States</div><div class="json-box">'+JSON.stringify(i.node_states||{},null,2)+'</div></div>';document.getElementById('instance-detail').innerHTML=h;openModal('modal-instance');});}
+function showInstance(id){
+  // Build template name map
+  var tmplMap={};
+  (templates||[]).forEach(function(t){tmplMap[t.id]=t.name;});
+  api('/api/v1/instances/'+id).then(function(i){
+    var tmplName=tmplMap[i.template_id]||i.template_id;
+    var h='<div class="detail-grid"><div><div class="detail-label">ID</div><div class="detail-value"><code>'+i.id+'</code></div></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="badge badge-'+i.status+'">'+i.status+'</span></div></div><div><div class="detail-label">Template</div><div class="detail-value">'+esc(tmplName)+'</div></div><div><div class="detail-label">Current Node</div><div class="detail-value">'+(i.current_node_id||'-')+'</div></div></div>'+(i.error?'<div style="background:#fef2f2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;">'+esc(i.error)+'</div>':'')+
+    '<div style="margin-top:8px;"><div class="detail-label">State</div><div class="json-box">'+JSON.stringify(i.state||{},null,2)+'</div></div><div style="margin-top:8px;"><div class="detail-label">Node States</div><div class="json-box">'+JSON.stringify(i.node_states||{},null,2)+'</div></div>';
+    document.getElementById('instance-detail').innerHTML=h;
+    openModal('modal-instance');
+  });
+}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function shortId(id){return id?id.substring(0,10)+'...':'-';}
-function fmtTime(t){return t?new Date(t).toLocaleString():'-';}
+function fmtTime(t){
+  if(!t)return '-';
+  var d=new Date(t);
+  var y=d.getFullYear();
+  var M=('0'+(d.getMonth()+1)).slice(-2);
+  var day=('0'+d.getDate()).slice(-2);
+  var h=('0'+d.getHours()).slice(-2);
+  var m=('0'+d.getMinutes()).slice(-2);
+  var s=('0'+d.getSeconds()).slice(-2);
+  return y+'/'+M+'/'+day+' '+h+':'+m+':'+s;
+}
 loadTemplates();

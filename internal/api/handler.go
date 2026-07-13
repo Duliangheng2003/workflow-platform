@@ -33,7 +33,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/templates/{id}/instances", h.StartInstance)
 	mux.HandleFunc("GET /api/v1/instances", h.ListInstances)
 	mux.HandleFunc("GET /api/v1/instances/{id}", h.GetInstance)
-	mux.HandleFunc("GET /api/v1/instances/{id}/thinking", h.GetInstanceThinking)
 		mux.HandleFunc("DELETE /api/v1/instances/{id}", h.DeleteInstance)
 
 	// Human Tasks
@@ -55,6 +54,24 @@ func (h *Handler) CreateTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Name == "" {
+		writeError(w, http.StatusBadRequest, "template name is required")
+		return
+	}
+
+	// Check name uniqueness
+	existing, err := h.store.ListTemplates()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	for _, t := range existing {
+		if t.Name == req.Name {
+			writeError(w, http.StatusConflict, "template name \""+req.Name+"\" already exists")
+			return
+		}
+	}
+
 	tmpl := &model.Template{
 		Name:        req.Name,
 		Description: req.Description,
@@ -71,7 +88,6 @@ func (h *Handler) CreateTemplate(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusCreated, tmpl)
 }
-
 func (h *Handler) GetTemplate(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	tmpl, err := h.store.GetTemplate(id)
@@ -108,10 +124,30 @@ func (h *Handler) UpdateTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Name == "" {
+		writeError(w, http.StatusBadRequest, "template name is required")
+		return
+	}
+
 	tmpl, err := h.store.GetTemplate(id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
+	}
+
+	// Check name uniqueness (skip if name unchanged)
+	if req.Name != tmpl.Name {
+		templates, err := h.store.ListTemplates()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		for _, t := range templates {
+			if t.Name == req.Name {
+				writeError(w, http.StatusConflict, "template name \""+req.Name+"\" already exists")
+				return
+			}
+		}
 	}
 
 	tmpl.Name = req.Name
@@ -128,11 +164,6 @@ func (h *Handler) UpdateTemplate(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, tmpl)
 }
-
-// ——————————————————————————————————————————————————————————————
-// Instance handlers
-// ——————————————————————————————————————————————————————————————
-
 func (h *Handler) StartInstance(w http.ResponseWriter, r *http.Request) {
 	tmplID := r.PathValue("id")
 
@@ -178,15 +209,6 @@ func (h *Handler) ListInstances(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, instances)
 }
-
-// GetInstanceThinking returns the real-time thinking trace for an Agent node.
-func (h *Handler) GetInstanceThinking(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	trace := h.engine.GetThinkingTrace(id)
-	writeJSON(w, http.StatusOK, map[string]any{"thinking": trace})
-}
-
-
 
 // ——————————————————————————————————————————————————————————————
 // Human Task handlers
