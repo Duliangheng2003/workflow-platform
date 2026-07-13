@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -226,14 +227,47 @@ func resolvePath(state map[string]any, segments []string) any {
 // codeLambda creates a Lambda that executes a JS/Python script.
 func (e *Engine) codeLambda(node *model.Node) func(context.Context, map[string]any) (map[string]any, error) {
 	return func(ctx context.Context, state map[string]any) (map[string]any, error) {
-		// For MVP, pass through the current state as input
-		// In production, this would execute the script in a sandbox
-		result := map[string]any{
-			"language": node.Language,
-			"input":    state,
-			"output":   state, // script result placeholder
+		script := node.Code
+		lang := node.Language
+		if lang == "" {
+			lang = "js"
 		}
-		state[node.ID] = result
+
+		// Serialize input data as JSON
+		inputJSON, _ := json.Marshal(state)
+		input := string(inputJSON)
+
+		var cmd *exec.Cmd
+		switch lang {
+		case "js", "javascript":
+			wrapped := fmt.Sprintf("const input = %s; %s", input, script)
+			cmd = exec.CommandContext(ctx, "node", "-e", wrapped)
+		case "python", "py":
+			escaped := strings.ReplaceAll(input, "'", "'\\''")
+			code := fmt.Sprintf("import json; input = json.loads('%s'); %s", escaped, script)
+			cmd = exec.CommandContext(ctx, "python3", "-c", code)
+		default:
+			state[node.ID] = map[string]any{"error": fmt.Sprintf("unsupported language: %s", lang)}
+			return state, nil
+		}
+
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		if err := cmd.Run(); err != nil {
+			state[node.ID] = map[string]any{
+				"error":  fmt.Sprintf("script error: %v", err),
+				"stderr": stderr.String(),
+			}
+			return state, nil
+		}
+
+		state[node.ID] = map[string]any{
+			"language": lang,
+			"output":   strings.TrimSpace(stdout.String()),
+			"stderr":   strings.TrimSpace(stderr.String()),
+		}
 		return state, nil
 	}
 }

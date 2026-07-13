@@ -47,6 +47,9 @@ func (s *Store) migrate() error {
 			description TEXT,
 			nodes JSON,
 			edges JSON,
+			start_type VARCHAR(32) DEFAULT '',
+			cron_expr VARCHAR(128) DEFAULT '',
+			last_run_at DATETIME NULL,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
@@ -102,7 +105,7 @@ func (s *Store) CreateTemplate(tmpl *model.Template) error {
 	edges, _ := json.Marshal(tmpl.Edges)
 
 	_, err := s.db.Exec(
-		`INSERT INTO templates (id, name, description, nodes, edges, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO templates (id, name, description, nodes, edges, start_type, cron_expr, last_run_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		tmpl.ID, tmpl.Name, tmpl.Description, nodes, edges, tmpl.CreatedAt, tmpl.UpdatedAt,
 	)
 	return err
@@ -110,12 +113,12 @@ func (s *Store) CreateTemplate(tmpl *model.Template) error {
 
 func (s *Store) GetTemplate(id string) (*model.Template, error) {
 	row := s.db.QueryRow(
-		`SELECT id, name, description, nodes, edges, created_at, updated_at FROM templates WHERE id = ?`, id,
+		`SELECT id, name, description, nodes, edges, start_type, cron_expr, last_run_at, created_at, updated_at FROM templates WHERE id = ?`, id,
 	)
 
 	var tmpl model.Template
 	var nodesJSON, edgesJSON []byte
-	err := row.Scan(&tmpl.ID, &tmpl.Name, &tmpl.Description, &nodesJSON, &edgesJSON, &tmpl.CreatedAt, &tmpl.UpdatedAt)
+	err := row.Scan(&tmpl.ID, &tmpl.Name, &tmpl.Description, &nodesJSON, &edgesJSON, &tmpl.StartType, &tmpl.CronExpr, &tmpl.LastRunAt, &tmpl.CreatedAt, &tmpl.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("template not found: %s", id)
 	}
@@ -130,7 +133,7 @@ func (s *Store) GetTemplate(id string) (*model.Template, error) {
 
 func (s *Store) ListTemplates() ([]*model.Template, error) {
 	rows, err := s.db.Query(
-		`SELECT id, name, description, nodes, edges, created_at, updated_at FROM templates ORDER BY created_at DESC`,
+		`SELECT id, name, description, nodes, edges, start_type, cron_expr, last_run_at, created_at, updated_at FROM templates ORDER BY created_at DESC`,
 	)
 	if err != nil {
 		return nil, err
@@ -141,7 +144,7 @@ func (s *Store) ListTemplates() ([]*model.Template, error) {
 	for rows.Next() {
 		var tmpl model.Template
 		var nodesJSON, edgesJSON []byte
-		if err := rows.Scan(&tmpl.ID, &tmpl.Name, &tmpl.Description, &nodesJSON, &edgesJSON, &tmpl.CreatedAt, &tmpl.UpdatedAt); err != nil {
+		if err := rows.Scan(&tmpl.ID, &tmpl.Name, &tmpl.Description, &nodesJSON, &edgesJSON, &tmpl.StartType, &tmpl.CronExpr, &tmpl.LastRunAt, &tmpl.CreatedAt, &tmpl.UpdatedAt); err != nil {
 			return nil, err
 		}
 		json.Unmarshal(nodesJSON, &tmpl.Nodes)
@@ -182,6 +185,13 @@ func (s *Store) CreateInstance(inst *model.Instance) error {
 		`INSERT INTO instances (id, template_id, status, state, node_states, current_node_id, error, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		inst.ID, inst.TemplateID, inst.Status, state, nodeStates, inst.CurrentNodeID, inst.Error, inst.CreatedAt, inst.UpdatedAt,
 	)
+	return err
+}
+
+func (s *Store) UpdateTemplate(tmpl *model.Template) error {
+	tmpl.UpdatedAt = time.Now()
+	_, err := s.db.Exec(`UPDATE templates SET name=?, description=?, nodes=?, edges=?, start_type=?, cron_expr=?, last_run_at=?, updated_at=? WHERE id=?`,
+		tmpl.Name, tmpl.Description, tmpl.Nodes, tmpl.Edges, tmpl.StartType, tmpl.CronExpr, tmpl.LastRunAt, tmpl.UpdatedAt, tmpl.ID)
 	return err
 }
 

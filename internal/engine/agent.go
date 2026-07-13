@@ -133,6 +133,7 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 
 		// Collect thinking trace from the message future
 		var thinkingTrace []string
+		instID := getInstanceID(ctx)
 		msgIter := msgFuture.GetMessages()
 		for {
 			msg, ok, err := msgIter.Next()
@@ -145,6 +146,7 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 			step := formatThinkingStep(msg)
 			if step != "" {
 				thinkingTrace = append(thinkingTrace, step)
+				e.AddThinkingStep(instID, step)
 			}
 		}
 

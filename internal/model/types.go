@@ -78,13 +78,16 @@ type Edge struct {
 
 // Template defines a workflow blueprint.
 type Template struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Nodes       []Node    `json:"nodes"`
-	Edges       []Edge    `json:"edges"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Nodes       []Node     `json:"nodes"`
+	Edges       []Edge     `json:"edges"`
+	StartType   string     `json:"start_type,omitempty"`
+	CronExpr    string     `json:"cron_expr,omitempty"`
+	LastRunAt   *time.Time `json:"last_run_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 // InstanceStatus represents the current status of a workflow instance.
@@ -160,4 +163,6 @@ type CreateTemplateRequest struct {
 	Description string `json:"description"`
 	Nodes       []Node `json:"nodes"`
 	Edges       []Edge `json:"edges"`
+	StartType   string `json:"start_type,omitempty"`
+	CronExpr    string `json:"cron_expr,omitempty"`
 }

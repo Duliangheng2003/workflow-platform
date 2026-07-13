@@ -43,8 +43,12 @@ server:
   port: 8080
 
 database:
-  # 为空则使用内存存储（重启后数据丢失）
-  host: ""
+  # 默认使用 MySQL。留空 host 则使用内存存储（重启后数据丢失）。
+  host: "127.0.0.1"
+  port: 3306
+  user: "root"
+  password: "your_password"
+  database: "workflow_platform"
 
 llm:
   profiles:

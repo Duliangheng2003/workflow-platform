@@ -37,6 +37,7 @@ func Run(cfg *config.Config) error {
 	}
 
 	eng := engine.New(st, cfg.LLM)
+	eng.StartCronScheduler(context.Background())
 	handler := api.NewHandler(st, eng, cfg.LLM)
 
 	mux := http.NewServeMux()

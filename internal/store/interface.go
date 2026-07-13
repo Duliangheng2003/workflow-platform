@@ -10,6 +10,7 @@ type Store interface {
 	CreateTemplate(tmpl *model.Template) error
 	GetTemplate(id string) (*model.Template, error)
 	ListTemplates() ([]*model.Template, error)
+	UpdateTemplate(tmpl *model.Template) error
 	DeleteTemplate(id string) error
 
 	// Instance operations

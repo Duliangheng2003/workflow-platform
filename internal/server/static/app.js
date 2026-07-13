@@ -16,6 +16,7 @@ function openModal(id){document.getElementById(id).classList.add('active');}
 // ===== Builder =====
 function openBuilder(){
   nodePositions={};builderNodes=[];builderEdges=[];selectedNodeId=null;_canvasInited=false;_connectFrom=null;
+  _startType='User Input';_cronExpr='';
   document.getElementById('add-popup').classList.remove('active');
   renderCanvas();showPage('builder');
   setTimeout(initCanvas,100);setTimeout(centerView,200);
@@ -76,7 +77,8 @@ function renderCanvas(){
 }
 
 var _startType='User Input';
-var startTypes=['User Input','Webhook','Schedule'];
+var startTypes=['User Input','Schedule'];
+var _cronExpr='';
 
 function toggleStartTypePopup(){var p=document.getElementById('start-type-popup');if(p)p.classList.toggle('active');}
 function changeStartType(v){_startType=v;document.getElementById('start-type-popup').classList.remove('active');renderCanvas();showProperties();}
@@ -232,7 +234,10 @@ function selectNodeById(id){
 function showProperties(){
   var panel=document.getElementById('node-properties');
   if(selectedNodeId==='_start'){
-    panel.innerHTML='<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #e2e8f0;"><div style="font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:50%;background:#059669;display:inline-block;"></span> START</div><div class="form-group"><label>Trigger Type</label><select onchange="changeStartType(this.value)">'+startTypes.map(function(t){return'<option value="'+t+'"'+(t===_startType?' selected':'')+'>'+t+'</option>';}).join('')+'</select></div><p style="font-size:0.8rem;color:#64748b;line-height:1.5;margin-top:8px;">Configure how this workflow is triggered. The start node defines the input parameters for the workflow.</p></div>';
+    panel.innerHTML='<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #e2e8f0;"><div style="font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:50%;background:#059669;display:inline-block;"></span> START</div><div class="form-group"><label>Trigger Type</label><select onchange="changeStartType(this.value)">'+startTypes.map(function(t){return'<option value="'+t+'"'+(t===_startType?' selected':'')+'>'+t+'</option>';}).join('')+'</select></div>'+
+(_startType==='Schedule'?'<div class="form-group"><label>Cron Expression</label><input value="'+esc(_cronExpr)+'" placeholder="0 9 * * *" onchange="_cronExpr=this.value"><p style="font-size:0.75rem;color:#94a3b8;margin-top:4px;">Format: minute hour day month weekday (e.g. 0 9 * * * = daily at 9:00)</p></div>':'')+
+'<p style="font-size:0.8rem;color:#64748b;line-height:1.5;margin-top:8px;">'+
+(_startType==='Schedule'?'Configure the cron schedule for automatic execution. The workflow will run at the specified times.':'Configure how this workflow is triggered. The start node defines the input parameters for the workflow.')+'</p></div>';
     return;
   }
   var node=builderNodes.find(function(n){return n.id===selectedNodeId;});
@@ -317,7 +322,9 @@ function saveWorkflow(){
   if(builderNodes.length===0){alert('Add at least one node');return;}
   closeModal('save-popup');
   var edges=builderEdges.map(function(e){var r={from:e.from,to:e.to};if(e.edge_type)r.edge_type=e.edge_type;return r;});
-  api('/api/v1/templates',{method:'POST',body:JSON.stringify({name:name,description:document.getElementById('save-desc').value.trim(),nodes:builderNodes,edges:edges})}).then(function(r){
+  var body={name:name,description:document.getElementById('save-desc').value.trim(),nodes:builderNodes,edges:edges,start_type:_startType};
+  if(_startType==='Schedule'&&_cronExpr)body.cron_expr=_cronExpr;
+  api('/api/v1/templates',{method:'POST',body:JSON.stringify(body)}).then(function(r){
     if(r&&r.id){alert('Workflow saved!');showPage('templates');}
     else{alert('Save failed: server not available');}
   });
@@ -440,7 +447,7 @@ function showTestPanel(msg){
 }
 
 // ===== Other Pages =====
-function loadTemplates(){api('/api/v1/templates').then(function(d){templates=Array.isArray(d)?d:[];var t=document.getElementById('template-list');if(templates.length===0){t.innerHTML='<tr><td colspan="4" class="empty-state"><p>No templates yet.</p></td></tr>';return;}t.innerHTML=templates.map(function(x){return'<tr><td><strong>'+esc(x.name)+'</strong><br><span style="font-size:0.75rem;color:#94a3b8;">'+esc(x.description||'')+'</span></td><td>'+(x.nodes||[]).length+' nodes</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.created_at)+'</td><td style="text-align:right;"><button class="btn btn-sm btn-primary" onclick="startInstance(\''+x.id+'\')">Run</button> <button class="btn btn-sm btn-danger" onclick="deleteTemplate(\''+x.id+'\')">Delete</button></td></tr>';}).join('');});}
+function loadTemplates(){api('/api/v1/templates').then(function(d){templates=Array.isArray(d)?d:[];var t=document.getElementById('template-list');if(templates.length===0){t.innerHTML='<tr><td colspan="6" class="empty-state"><p>No templates yet.</p></td></tr>';return;}t.innerHTML=templates.map(function(x){var st=x.start_type||'User Input';var badge=st==='Schedule'?'<span class="badge" style="background:#fef3c7;color:#92400e;">Schedule</span>':'<span class="badge" style="background:#dbeafe;color:#1d4ed8;">Manual</span>';return'<tr><td><strong>'+esc(x.name)+'</strong><br><span style="font-size:0.75rem;color:#94a3b8;">'+esc(x.description||'')+'</span></td><td>'+badge+'</td><td>'+(x.nodes||[]).length+' nodes</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.last_run_at)+'</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.created_at)+'</td><td style="text-align:right;"><button class="btn btn-sm btn-primary" onclick="startInstance(\''+x.id+'\')">Run</button> <button class="btn btn-sm btn-danger" onclick="deleteTemplate(\''+x.id+'\')">Delete</button></td></tr>';}).join('');});}
 function deleteTemplate(id){
   if(!confirm('Delete this template?'))return;
   localTemplates=localTemplates.filter(function(t){return t.id!==id;});
@@ -452,7 +459,53 @@ function startInstance(id){
     alert('Local workflow run (simulated):\nTemplate: '+localTpl.name+'\nNodes: '+localTpl.nodes.length+'\nEdges: '+localTpl.edges.length);
     return;
   }
-  var i=prompt('Initial data (JSON):','{}');if(i===null)return;try{var d=JSON.parse(i||'{}');}catch(e){alert('Invalid JSON');return;}api('/api/v1/templates/'+id+'/instances',{method:'POST',body:JSON.stringify({input:d})}).then(function(r){alert('Instance started');showPage('instances');});}
+  var i=prompt('Initial data (JSON):','{}');if(i===null)return;try{var d=JSON.parse(i||'{}');}catch(e){alert('Invalid JSON');return;}api('/api/v1/templates/'+id+'/instances',{method:'POST',body:JSON.stringify({input:d})}).then(function(r){
+  if(!r||!r.id){alert('Failed to start instance');return;}
+  var instId=r.id;
+  // Open thinking panel
+  var panel=document.getElementById('live-thinking');
+  if(!panel){
+    panel=document.createElement('div');
+    panel.id='live-thinking';
+    panel.style.cssText='position:fixed;top:56px;right:0;bottom:0;width:360px;z-index:100;background:#fff;border-left:1px solid #e2e8f0;display:flex;flex-direction:column;box-shadow:-4px 0 12px rgba(0,0,0,0.08);animation:slidein 0.25s ease;';
+    panel.innerHTML='<div style="padding:12px 14px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;">Running Instance</span><span id="live-status" class="badge badge-running">running</span></div><div id="live-thinking-body" style="padding:14px;flex:1;overflow-y:auto;font-size:0.85rem;"><div style="text-align:center;padding:20px;color:#94a3b8;">Waiting for Agent...</div></div><div style="padding:10px 14px;border-top:1px solid #e2e8f0;"><button class="btn btn-sm btn-outline" onclick="document.getElementById(\'live-thinking\').remove()">Close</button> <button class="btn btn-sm btn-primary" onclick="showInstance(\''+instId+'\')">Detail</button></div>';
+    document.body.appendChild(panel);
+  }
+  var body=document.getElementById('live-thinking-body');
+  var seen=0;
+  var pollTimer=setInterval(function(){
+    api('/api/v1/instances/'+instId+'/thinking').then(function(resp){
+      if(!resp||!resp.thinking)return;
+      var steps=resp.thinking;
+      if(steps.length>seen){
+        if(seen===0)body.innerHTML='';
+        for(var j=seen;j<steps.length;j++){
+          var s=steps[j];
+          var cls='';
+          if(s.indexOf('Action:')===0)cls='color:#8b5cf6;';
+          else if(s.indexOf('Tool result:')===0)cls='color:#059669;';
+          else if(s.indexOf('Thinking:')===0)cls='color:#1a1a2e;';
+          body.innerHTML+='<div style="'+cls+'margin-bottom:6px;padding:4px 8px;background:#f8fafc;border-radius:4px;font-family:monospace;font-size:0.78rem;line-height:1.5;">'+esc(s)+'</div>';
+        }
+        seen=steps.length;
+        body.scrollTop=body.scrollHeight;
+      }
+    });
+    // Check if instance completed
+    api('/api/v1/instances/'+instId).then(function(inst){
+      if(inst&&inst.status!=='running'&&inst.status!=='pending'){
+        clearInterval(pollTimer);
+        var badge=document.getElementById('live-status');
+        if(badge){
+          badge.className='badge badge-'+(inst.status||'completed');
+          badge.textContent=inst.status||'completed';
+        }
+        body.innerHTML+='<div style="margin-top:12px;padding:8px;background:#f8fafc;border-radius:4px;color:'+(inst.status==='failed'?'#dc2626':'#059669')+';font-weight:600;text-align:center;">Workflow '+(inst.status||'completed')+'</div>';
+      }
+    });
+  },1000);
+  showPage('instances');
+});}
 function loadInstances(){api('/api/v1/instances').then(function(d){var l=document.getElementById('instance-list');if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr>';return;}l.innerHTML=d.map(function(i){return'<tr><td><code>'+shortId(i.id)+'</code></td><td>'+esc(i.template_id)+'</td><td><span class="badge badge-'+i.status+'">'+i.status+'</span></td><td>'+(i.current_node_id||'-')+'</td><td>'+fmtTime(i.created_at)+'</td><td><button class="btn btn-xs btn-outline" onclick="showInstance(\''+i.id+'\')">Detail</button></td></tr>';}).join('');});}
 function showInstance(id){api('/api/v1/instances/'+id).then(function(i){var h='<div class="detail-grid"><div><div class="detail-label">ID</div><div class="detail-value"><code>'+i.id+'</code></div></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="badge badge-'+i.status+'">'+i.status+'</span></div></div><div><div class="detail-label">Template</div><div class="detail-value">'+i.template_id+'</div></div><div><div class="detail-label">Current Node</div><div class="detail-value">'+(i.current_node_id||'-')+'</div></div></div>'+(i.error?'<div style="background:#fef2f2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;">'+esc(i.error)+'</div>':'');if(i.state){var _tf=false;for(var _k in i.state){if(_k.indexOf('_thinking')>0){if(!_tf){h+='<div style="margin-top:12px;"><div class="detail-label" style="margin-bottom:6px;">Agent Thinking</div>';_tf=true;}h+='<div style="background:#f8fafc;border-radius:6px;padding:10px;margin-bottom:8px;font-family:monospace;font-size:0.78rem;line-height:1.6;">';var _steps=i.state[_k];if(Array.isArray(_steps)){_steps.forEach(function(s){h+='<div style="color:#1a1a2e;margin-bottom:2px;">'+esc(s)+'</div>';});}h+='</div>';}}if(_tf)h+='</div>';}h+='<div style="margin-top:8px;"><div class="detail-label">State</div><div class="json-box">'+JSON.stringify(i.state||{},null,2)+'</div></div><div style="margin-top:8px;"><div class="detail-label">Node States</div><div class="json-box">'+JSON.stringify(i.node_states||{},null,2)+'</div></div>';document.getElementById('instance-detail').innerHTML=h;openModal('modal-instance');});}
 function loadTasks(s){var u='/api/v1/human-tasks';if(s)u+='?status='+s;api(u).then(function(d){var l=document.getElementById('task-list');if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No tasks.</p></td></tr>';return;}l.innerHTML=d.map(function(t){return'<tr><td><code>'+shortId(t.id)+'</code></td><td>'+esc(t.node_description)+'</td><td>'+esc(t.assignee_group||'-')+'</td><td><span class="badge badge-'+t.status+'">'+t.status+'</span></td><td>'+fmtTime(t.created_at)+'</td><td>'+(t.status==='pending'?'<button class="btn btn-xs btn-primary" onclick="openResume(\''+t.id+'\')">Handle</button>':'Done')+'</td></tr>';}).join('');});}

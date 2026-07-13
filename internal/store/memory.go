@@ -79,6 +79,18 @@ func (m *MemoryStore) DeleteTemplate(id string) error {
 	return nil
 }
 
+func (m *MemoryStore) UpdateTemplate(tmpl *model.Template) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if _, ok := m.templates[tmpl.ID]; !ok {
+		return fmt.Errorf("template not found: %s", tmpl.ID)
+	}
+	tmpl.UpdatedAt = time.Now()
+	m.templates[tmpl.ID] = tmpl
+	return nil
+}
+
 // Instance operations
 
 func (m *MemoryStore) CreateInstance(inst *model.Instance) error {

@@ -3,7 +3,10 @@ package engine
 import (
 	"context"
 	"fmt"
+	"log"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/cloudwego/eino/compose"
 
@@ -21,6 +24,8 @@ type Engine struct {
 
 	mu      sync.RWMutex
 	waiters map[string]chan *resumeSignal // instanceID -> resume channel
+
+	thinkingTraces sync.Map // instanceID -> *[]string (real-time Agent thinking trace)
 }
 
 type resumeSignal struct {
@@ -34,6 +39,84 @@ func New(s store.Store, llmCfg config.LLMConfig) *Engine {
 		llmProfiles: llmCfg,
 		waiters:     make(map[string]chan *resumeSignal),
 	}
+}
+
+// StartCronScheduler starts a background goroutine that checks for
+// Schedule-type templates and starts instances when cron matches.
+func (e *Engine) StartCronScheduler(ctx context.Context) {
+	go func() {
+		log.Println("Cron scheduler started")
+		for {
+			select {
+			case <-ctx.Done():
+				log.Println("Cron scheduler stopped")
+				return
+			case <-time.After(1 * time.Minute):
+				e.checkSchedules(ctx)
+			}
+		}
+	}()
+}
+
+func (e *Engine) checkSchedules(ctx context.Context) {
+	templates, err := e.store.ListTemplates()
+	if err != nil {
+		return
+	}
+
+	now := time.Now()
+	for _, tmpl := range templates {
+		if tmpl.StartType != "Schedule" || tmpl.CronExpr == "" {
+			continue
+		}
+		if matchCron(tmpl.CronExpr, now) {
+			// Start instance with empty input
+			inst, err := e.StartInstance(ctx, tmpl.ID, nil)
+			if err != nil {
+				log.Printf("Cron: failed to start %s: %v", tmpl.ID, err)
+			} else {
+				log.Printf("Cron: started instance %s for template %s", inst.ID, tmpl.ID)
+			}
+		}
+	}
+}
+
+// matchCron checks if a cron expression matches the given time.
+// Format: minute hour day month weekday (0-59 0-23 1-31 1-12 0-6)
+func matchCron(expr string, t time.Time) bool {
+	parts := strings.Fields(expr)
+	if len(parts) != 5 {
+		return false
+	}
+
+	return matchCronField(parts[0], t.Minute(), 0, 59) &&
+		matchCronField(parts[1], t.Hour(), 0, 23) &&
+		matchCronField(parts[2], t.Day(), 1, 31) &&
+		matchCronField(parts[3], int(t.Month()), 1, 12) &&
+		matchCronField(parts[4], int(t.Weekday()), 0, 6)
+}
+
+func matchCronField(field string, value int, min, max int) bool {
+	if field == "*" {
+		return true
+	}
+	// Handle "*/N" step syntax
+	if strings.HasPrefix(field, "*/") {
+		step := 0
+		fmt.Sscanf(field, "*/%d", &step)
+		if step > 0 && value%step == 0 {
+			return true
+		}
+		return false
+	}
+	// Handle comma-separated values
+	for _, part := range strings.Split(field, ",") {
+		var v int
+		if _, err := fmt.Sscanf(part, "%d", &v); err == nil && v == value {
+			return true
+		}
+	}
+	return false
 }
 
 // StartInstance creates a workflow instance and starts executing it.
@@ -60,6 +143,11 @@ func (e *Engine) StartInstance(ctx context.Context, tmplID string, input map[str
 	if err := e.store.CreateInstance(inst); err != nil {
 		return nil, fmt.Errorf("create instance: %w", err)
 	}
+
+	// Update template's last run time
+	now := time.Now()
+	tmpl.LastRunAt = &now
+	_ = e.store.UpdateTemplate(tmpl)
 
 	// Build and compile the eino graph
 	graph, err := e.buildGraph(tmpl)
@@ -291,6 +379,31 @@ func findNode(nodes []model.Node, id string) *model.Node {
 		}
 	}
 	return nil
+}
+
+// AddThinkingStep appends a step to the real-time thinking trace for an instance.
+func (e *Engine) AddThinkingStep(instID, step string) {
+	if instID == "" {
+		return
+	}
+	val, _ := e.thinkingTraces.LoadOrStore(instID, &[]string{})
+	trace := val.(*[]string)
+	*trace = append(*trace, step)
+}
+
+// GetThinkingTrace returns the current thinking trace for an instance.
+func (e *Engine) GetThinkingTrace(instID string) []string {
+	val, ok := e.thinkingTraces.Load(instID)
+	if !ok {
+		return nil
+	}
+	trace := val.(*[]string)
+	return *trace
+}
+
+// ClearThinkingTrace removes the thinking trace for an instance.
+func (e *Engine) ClearThinkingTrace(instID string) {
+	e.thinkingTraces.Delete(instID)
 }
 
 // ——————————————————————————————————————————————————————————————

@@ -43,8 +43,12 @@ server:
   port: 8080
 
 database:
-  # Empty = use in-memory storage (data lost on restart)
-  host: ""
+  # Default: MySQL. Leave host empty for in-memory storage (data lost on restart).
+  host: "127.0.0.1"
+  port: 3306
+  user: "root"
+  password: "your_password"
+  database: "workflow_platform"
 
 llm:
   profiles:

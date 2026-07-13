@@ -32,6 +32,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/templates/{id}/instances", h.StartInstance)
 	mux.HandleFunc("GET /api/v1/instances", h.ListInstances)
 	mux.HandleFunc("GET /api/v1/instances/{id}", h.GetInstance)
+	mux.HandleFunc("GET /api/v1/instances/{id}/thinking", h.GetInstanceThinking)
 
 	// Human Tasks
 	mux.HandleFunc("GET /api/v1/human-tasks", h.ListHumanTasks)
@@ -57,6 +58,8 @@ func (h *Handler) CreateTemplate(w http.ResponseWriter, r *http.Request) {
 		Description: req.Description,
 		Nodes:       req.Nodes,
 		Edges:       req.Edges,
+		StartType:   req.StartType,
+		CronExpr:    req.CronExpr,
 	}
 
 	if err := h.store.CreateTemplate(tmpl); err != nil {
@@ -135,6 +138,15 @@ func (h *Handler) ListInstances(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, instances)
 }
+
+// GetInstanceThinking returns the real-time thinking trace for an Agent node.
+func (h *Handler) GetInstanceThinking(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	trace := h.engine.GetThinkingTrace(id)
+	writeJSON(w, http.StatusOK, map[string]any{"thinking": trace})
+}
+
+
 
 // ——————————————————————————————————————————————————————————————
 // Human Task handlers
