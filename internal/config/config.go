@@ -19,13 +19,15 @@ type ServerConfig struct {
 	Port int `yaml:"port"`
 }
 
-// DatabaseConfig holds MySQL connection settings.
+// DatabaseConfig holds database connection settings.
+// For SQLite, set Path. For MySQL, set Host/Port/User/Password/Database.
 type DatabaseConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	Database string `yaml:"database"`
+	Path     string `yaml:"path"`     // SQLite file path (e.g. "data.db")
+	Host     string `yaml:"host"`     // MySQL host
+	Port     int    `yaml:"port"`     // MySQL port
+	User     string `yaml:"user"`     // MySQL user
+	Password string `yaml:"password"` // MySQL password
+	Database string `yaml:"database"` // MySQL database name
 }
 
 // DSN returns the MySQL Data Source Name string.

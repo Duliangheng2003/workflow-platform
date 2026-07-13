@@ -16,6 +16,7 @@ import (
 	"github.com/Duliangheng2003/workflow-platform/internal/engine"
 	"github.com/Duliangheng2003/workflow-platform/internal/store"
 	"github.com/Duliangheng2003/workflow-platform/internal/store/mysql"
+	"github.com/Duliangheng2003/workflow-platform/internal/store/sqlite"
 )
 
 //go:embed static/*.html static/*.css static/*.js
@@ -25,7 +26,13 @@ func Run(cfg *config.Config) error {
 	var st store.Store
 	var err error
 
-	if cfg.Database.Host != "" {
+	if cfg.Database.Path != "" {
+		st, err = sqlite.NewStore(cfg.Database.Path)
+		if err != nil {
+			return fmt.Errorf("sqlite store: %w", err)
+		}
+		log.Println("Using SQLite storage:", cfg.Database.Path)
+	} else if cfg.Database.Host != "" {
 		st, err = mysql.NewStore(cfg.Database)
 		if err != nil {
 			return fmt.Errorf("mysql store: %w", err)

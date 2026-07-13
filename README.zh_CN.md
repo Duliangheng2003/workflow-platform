@@ -2,18 +2,19 @@
 
 [English](README.md) | [中文](README.zh_CN.md)
 
-基于 [Eino](https://github.com/cloudwego/eino) 的个人 AI 工作流引擎。通过可视化编辑器设计工作流，使用 AI Agent 执行多轮推理、调用工具、抓取网页、执行脚本。
+基于 [Eino](https://github.com/cloudwego/eino) 的个人 AI 工作流引擎。通过可视化编辑器设计工作流，使用 AI Agent 执行多轮推理、搜索网页、调用 API、执行脚本。
 
 ## 功能特性
 
-- **可视化流程编辑器** — 拖拽节点到画布，用连线构建流程
-- **双类型连线** — Flow 边控制执行顺序，Data 边传递业务上下文
-- **AI Agent** — 基于 eino ReAct 实现多轮推理，知道自身有哪些工具可用
+- **可视化流程编辑器** — 拖拽节点到画布，用 Flow/Data 边连接，右侧面板配置属性
+- **AI Agent** — eino ReAct 智能代理，多轮推理，知道自身有哪些工具可用
 - **内置工具** — `web_search`、`web_fetch`、`now`、`write_file`，每个 Agent 自动拥有
 - **节点工具** — API Call 和 Code 节点可被 Agent 作为工具调用
 - **提取器** — 上传文件，LLM 自动总结，通过 Data 边传给 Agent
-- **思考过程** — Agent 的中间推理步骤和工具调用会被记录并展示
-- **代码执行** — Code 节点执行 JS/Python 脚本，可被 Agent 调用
+- **实时思考过程** — Agent 的中间推理步骤和工具调用实时展示
+- **代码执行** — Code 节点执行 JS/Python 脚本
+- **定时调度** — Schedule 类型模板按 cron 表达式自动执行
+- **双类型连线** — Flow 边控制执行顺序，Data 边传递业务上下文
 
 ## 节点类型
 
@@ -32,6 +33,16 @@
 | Flow | 实线+箭头 | A → B | 执行顺序 + 数据管道 |
 | Data | 虚线，无箭头 | A — B | 向 Agent 传递上下文（仅 Agent/Extractor 可创建） |
 
+## 技术栈
+
+| 层 | 技术 |
+|----|------|
+| 前端 | 原生 HTML/CSS/JS（无框架） |
+| 后端 | Go 1.24，[Eino](https://github.com/cloudwego/eino)（ReAct Agent、图执行引擎） |
+| 数据库 | SQLite（默认），支持 MySQL，可回退到内存存储 |
+| LLM | 兼容 OpenAI API 格式（OpenAI、DeepSeek 等） |
+| 存储层 | `database/sql` + go-sqlite3 / go-sql-driver-mysql |
+
 ## 快速开始
 
 ### 1. 配置
@@ -43,12 +54,7 @@ server:
   port: 8080
 
 database:
-  # 默认使用 MySQL。留空 host 则使用内存存储（重启后数据丢失）。
-  host: "127.0.0.1"
-  port: 3306
-  user: "root"
-  password: "your_password"
-  database: "workflow_platform"
+  path: "workflow.db"  # SQLite 文件路径，留空则使用内存存储
 
 llm:
   profiles:
@@ -62,52 +68,12 @@ llm:
 ### 2. 启动
 
 ```bash
-# 直接运行
 go run -ldflags=-checklinkname=0 ./cmd/server/
-
-# 编译
-go build -ldflags=-checklinkname=0 -o workflow-server ./cmd/server/
-./workflow-server
 ```
 
 浏览器打开 `http://localhost:8080`。
 
-> 注意：Go 1.24 需要 `-ldflags=-checklinkname=0` 参数解决 sonic 库兼容性问题。
-
-## API 接口
-
-### 模板管理
-
-```bash
-# 创建
-curl -X POST http://localhost:8080/api/v1/templates \
-  -H "Content-Type: application/json" \
-  -d '{"name":"my_workflow","nodes":[{"id":"call_1","type":"call","webhook_url":"https://api.example.com"}],"edges":[{"from":"START","to":"call_1"},{"from":"call_1","to":"END"}]}'
-
-# 列表
-curl http://localhost:8080/api/v1/templates
-
-# 详情
-curl http://localhost:8080/api/v1/templates/{id}
-
-# 删除
-curl -X DELETE http://localhost:8080/api/v1/templates/{id}
-```
-
-### 实例管理
-
-```bash
-# 启动实例
-curl -X POST http://localhost:8080/api/v1/templates/{id}/instances \
-  -H "Content-Type: application/json" \
-  -d '{"input": {}}'
-
-# 列表
-curl http://localhost:8080/api/v1/instances
-
-# 详情
-curl http://localhost:8080/api/v1/instances/{id}
-```
+> 注意：Go 1.24 需要 `-ldflags=-checklinkname=0` 参数解决 Eino 依赖的 sonic 库兼容性问题。
 
 ## 项目结构
 
@@ -117,9 +83,9 @@ config.yaml                     # 配置文件
 internal/
   config/config.go              # 配置加载
   model/types.go                # 数据模型
-  store/                        # 存储层（内存 / MySQL）
+  store/                        # 存储层（sqlite / mysql / 内存）
   engine/
-    engine.go                   # Eino 图构建
+    engine.go                   # Eino 图构建 + 定时调度
     nodes.go                    # 节点执行逻辑
     agent.go                    # Agent + 工具包装
     tools.go                    # 内置工具（now, web_fetch 等）
@@ -136,6 +102,11 @@ internal/
 - Flow 边构建执行图，Data 边不参与图构建（仅提供上下文）
 - Agent 使用 eino 的 `react` 包实现 ReAct 循环
 - 内置工具自动注册到每个 Agent
-- 思考过程通过 `react.WithMessageFuture()` 收集，存入实例状态
+- 思考过程通过 `react.WithMessageFuture()` 收集，前端轮询实时展示
 - Extractor 使用配置的 LLM profile 对上传文件进行总结
 - Code 节点通过 `node`/`python3` 命令执行脚本
+- 定时调度器每分钟检查一次 Schedule 类型模板的 cron 表达式
+
+---
+
+> **注意：** 此项目仍在积极开发中，功能可能会有变化，部分功能仍在完善。

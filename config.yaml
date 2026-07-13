@@ -2,12 +2,14 @@ server:
   port: 8080
 
 database:
-  host: "127.0.0.1"
-  port: 3306
-  user: "root"
-  password: "your_password"
-  database: "workflow_platform"
-  # Leave host empty to use in-memory storage (data lost on restart):
+  # SQLite (default). Set path to a file path, or leave empty for in-memory.
+  path: "workflow.db"
+  # MySQL (alternative). Uncomment and fill in to use MySQL instead.
+  # host: "127.0.0.1"
+  # port: 3306
+  # user: "root"
+  # password: "your_password"
+  # database: "workflow_platform"
 
 llm:
   profiles:

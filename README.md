@@ -2,18 +2,19 @@
 
 [English](README.md) | [中文](README.zh_CN.md)
 
-A personal AI workflow engine built on [Eino](https://github.com/cloudwego/eino). Design workflows with a visual editor, run them with AI-powered agents that can call tools, fetch web data, and execute scripts.
+A personal AI workflow engine built on [Eino](https://github.com/cloudwego/eino). Design workflows visually, run them with AI-powered agents that can search the web, call APIs, execute scripts, and reason through multi-step tasks.
 
 ## Features
 
-- **Visual workflow builder** — drag-and-drop nodes on canvas, connect them with edges
-- **Dual edge system** — Flow edges for execution order, Data edges for context sharing
-- **AI Agent** — uses eino's ReAct agent for multi-step reasoning, knows what tools it has
-- **Built-in tools** — `web_search`, `web_fetch`, `now`, `write_file` — available to every Agent
+- **Visual workflow builder** — drag-and-drop nodes, connect with Flow/Data edges, configure in the right panel
+- **AI Agent** — eino ReAct agent with multi-step reasoning, knows what tools it has
+- **Built-in tools** — `web_search`, `web_fetch`, `now`, `write_file` — every Agent can use them
 - **Node-based tools** — API Call and Code nodes can be called as tools by the Agent
-- **Extractor** — upload files, LLM summarizes them, passes context to Agent via Data edges
-- **Thinking trace** — Agent's intermediate thoughts and tool calls are recorded and displayed
-- **Code execution** — Code nodes execute JS/Python scripts, callable by Agent as tools
+- **Extractor** — upload files, LLM summarizes, passes context to Agent via Data edges
+- **Real-time thinking trace** — Agent's intermediate thoughts and tool calls are displayed live
+- **Code execution** — Code nodes execute JS/Python scripts
+- **Cron scheduling** — Schedule-type templates run automatically on cron expressions
+- **Dual edge system** — Flow edges for execution order, Data edges for context sharing
 
 ## Node Types
 
@@ -30,7 +31,17 @@ A personal AI workflow engine built on [Eino](https://github.com/cloudwego/eino)
 | Type | Style | Direction | Purpose |
 |------|-------|-----------|---------|
 | Flow | Solid + arrow | A → B | Execution order + data pipeline |
-| Data | Dashed, no arrow | A — B | Context sharing to Agent (only Agent/Extractor can create) |
+| Data | Dashed, no arrow | A — B | Context sharing (only Agent/Extractor can create) |
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Vanilla HTML/CSS/JS (no framework) |
+| Backend | Go 1.24, [Eino](https://github.com/cloudwego/eino) (ReAct agent, graph execution) |
+| Database | SQLite (default), MySQL supported, in-memory fallback |
+| LLM | OpenAI-compatible APIs (OpenAI, DeepSeek, etc.) |
+| Storage | `database/sql` + go-sqlite3 / go-sql-driver-mysql |
 
 ## Quick Start
 
@@ -43,12 +54,7 @@ server:
   port: 8080
 
 database:
-  # Default: MySQL. Leave host empty for in-memory storage (data lost on restart).
-  host: "127.0.0.1"
-  port: 3306
-  user: "root"
-  password: "your_password"
-  database: "workflow_platform"
+  path: "workflow.db"  # SQLite file, or leave empty for in-memory
 
 llm:
   profiles:
@@ -62,52 +68,12 @@ llm:
 ### 2. Run
 
 ```bash
-# Direct run
 go run -ldflags=-checklinkname=0 ./cmd/server/
-
-# Build
-go build -ldflags=-checklinkname=0 -o workflow-server ./cmd/server/
-./workflow-server
 ```
 
 Open `http://localhost:8080` in your browser.
 
-> Note: `-ldflags=-checklinkname=0` is required for Go 1.24 compatibility with the sonic library.
-
-## API
-
-### Templates
-
-```bash
-# Create
-curl -X POST http://localhost:8080/api/v1/templates \
-  -H "Content-Type: application/json" \
-  -d '{"name":"my_workflow","nodes":[{"id":"call_1","type":"call","webhook_url":"https://api.example.com"}],"edges":[{"from":"START","to":"call_1"},{"from":"call_1","to":"END"}]}'
-
-# List
-curl http://localhost:8080/api/v1/templates
-
-# Get
-curl http://localhost:8080/api/v1/templates/{id}
-
-# Delete
-curl -X DELETE http://localhost:8080/api/v1/templates/{id}
-```
-
-### Instances
-
-```bash
-# Start
-curl -X POST http://localhost:8080/api/v1/templates/{id}/instances \
-  -H "Content-Type: application/json" \
-  -d '{"input": {}}'
-
-# List
-curl http://localhost:8080/api/v1/instances
-
-# Detail
-curl http://localhost:8080/api/v1/instances/{id}
-```
+> Note: `-ldflags=-checklinkname=0` is required for Go 1.24 compatibility with the sonic library used by Eino.
 
 ## Project Structure
 
@@ -117,9 +83,9 @@ config.yaml                     # Configuration
 internal/
   config/config.go              # Config loader
   model/types.go                # Data models
-  store/                        # Storage (memory / MySQL)
+  store/                        # Storage (sqlite / mysql / memory)
   engine/
-    engine.go                   # Eino graph builder
+    engine.go                   # Eino graph builder + cron scheduler
     nodes.go                    # Node execution logic
     agent.go                    # Agent + tool wrappers
     tools.go                    # Built-in tools (now, web_fetch, etc.)
@@ -133,9 +99,14 @@ internal/
 ## Architecture
 
 - Workflow templates are translated into eino `compose.Graph` instances at runtime
-- Flow edges build the execution graph, Data edges are skipped (they only provide context)
+- Flow edges build the execution graph; Data edges are skipped (they only provide context)
 - Agent nodes use eino's `react` agent for ReAct loop with tool calling
 - Built-in tools are automatically available to every Agent
-- Thinking trace is collected via `react.WithMessageFuture()` and stored in instance state
+- Thinking trace is collected via `react.WithMessageFuture()` and polled by the frontend in real-time
 - Extractor uses configured LLM profile to summarize uploaded files
 - Code nodes execute JS/Python via `node`/`python3` CLI commands
+- Cron scheduler runs every minute, checks Schedule-type templates for matching cron expressions
+
+---
+
+> **Note:** This project is actively under development. Features may change, and some functionality is still being refined.
