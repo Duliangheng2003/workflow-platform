@@ -255,6 +255,18 @@ func (s *Store) UpdateInstance(inst *model.Instance) error {
 	return err
 }
 
+func (s *Store) DeleteInstance(id string) error {
+	res, err := s.db.Exec(`DELETE FROM instances WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("instance not found: %s", id)
+	}
+	return nil
+}
+
 // ——————————————————————————————————————————————————————————————
 // Human Tasks
 // ——————————————————————————————————————————————————————————————

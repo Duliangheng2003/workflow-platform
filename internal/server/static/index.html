@@ -12,7 +12,6 @@
   <nav>
     <a onclick="showPage('templates')" class="active" data-page="templates">Templates</a>
     <a onclick="showPage('instances')" data-page="instances">Instances</a>
-    <a onclick="showPage('tasks')" data-page="tasks">Tasks</a>
   </nav>
 </header>
 <main>
@@ -26,20 +25,6 @@
   <div class="card">
     <div class="card-header"><h3>Running Instances</h3></div>
     <table><thead><tr><th>ID</th><th>Template</th><th>Status</th><th>Node</th><th>Time</th><th></th></tr></thead><tbody id="instance-list"><tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr></tbody></table>
-  </div>
-</div>
-<div id="page-tasks" class="page">
-  <div class="card">
-    <div class="card-header">
-      <h3>Human Tasks</h3>
-      <div style="display:flex;gap:4px;">
-        <button class="btn btn-sm btn-outline" onclick="loadTasks('')">All</button>
-        <button class="btn btn-sm btn-primary" onclick="loadTasks('pending')">Pending</button>
-        <button class="btn btn-sm btn-outline" onclick="loadTasks('approved')">Approved</button>
-        <button class="btn btn-sm btn-outline" onclick="loadTasks('rejected')">Rejected</button>
-      </div>
-    </div>
-    <table><thead><tr><th>Task</th><th>Node</th><th>Assignee</th><th>Status</th><th>Time</th><th></th></tr></thead><tbody id="task-list"><tr><td colspan="6" class="empty-state"><p>No tasks.</p></td></tr></tbody></table>
   </div>
 </div>
 </main>
@@ -103,7 +88,6 @@
 </div>
 
 <div id="modal-instance" class="modal-overlay"><div class="modal" style="max-width:700px;"><h2>Instance Detail</h2><div id="instance-detail">Loading...</div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-instance')">Close</button></div></div></div>
-<div id="modal-resume" class="modal-overlay"><div class="modal" style="max-width:520px;"><h2>Handle Task</h2><div id="task-detail">Loading...</div><div class="form-group"><label>Result (JSON)</label><textarea id="resume-data" rows="4" style="font-family:monospace;font-size:0.8rem;">{"approved":true,"comment":""}</textarea></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-resume')">Cancel</button><button class="btn btn-danger" onclick="resumeTask('reject')">Reject</button><button class="btn btn-success" onclick="resumeTask('approve')">Approve</button></div></div></div>
 
 	<!-- Toast Container -->
 	<div id="toast-container"></div>

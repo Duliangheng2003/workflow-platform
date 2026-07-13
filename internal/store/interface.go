@@ -18,6 +18,7 @@ type Store interface {
 	GetInstance(id string) (*model.Instance, error)
 	ListInstances() ([]*model.Instance, error)
 	UpdateInstance(inst *model.Instance) error
+		DeleteInstance(id string) error
 
 	// HumanTask operations
 	CreateHumanTask(task *model.HumanTask) error

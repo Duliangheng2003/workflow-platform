@@ -26,6 +26,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/templates", h.CreateTemplate)
 	mux.HandleFunc("GET /api/v1/templates", h.ListTemplates)
 	mux.HandleFunc("GET /api/v1/templates/{id}", h.GetTemplate)
+	mux.HandleFunc("PUT /api/v1/templates/{id}", h.UpdateTemplate)
 	mux.HandleFunc("DELETE /api/v1/templates/{id}", h.DeleteTemplate)
 
 	// Instances
@@ -33,6 +34,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/instances", h.ListInstances)
 	mux.HandleFunc("GET /api/v1/instances/{id}", h.GetInstance)
 	mux.HandleFunc("GET /api/v1/instances/{id}/thinking", h.GetInstanceThinking)
+		mux.HandleFunc("DELETE /api/v1/instances/{id}", h.DeleteInstance)
 
 	// Human Tasks
 	mux.HandleFunc("GET /api/v1/human-tasks", h.ListHumanTasks)
@@ -98,6 +100,35 @@ func (h *Handler) DeleteTemplate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) UpdateTemplate(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req model.CreateTemplateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	tmpl, err := h.store.GetTemplate(id)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	tmpl.Name = req.Name
+	tmpl.Description = req.Description
+	tmpl.Nodes = req.Nodes
+	tmpl.Edges = req.Edges
+	tmpl.StartType = req.StartType
+	tmpl.CronExpr = req.CronExpr
+
+	if err := h.store.UpdateTemplate(tmpl); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, tmpl)
+}
+
 // ——————————————————————————————————————————————————————————————
 // Instance handlers
 // ——————————————————————————————————————————————————————————————
@@ -128,6 +159,15 @@ func (h *Handler) GetInstance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, inst)
+}
+
+func (h *Handler) DeleteInstance(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := h.store.DeleteInstance(id); err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) ListInstances(w http.ResponseWriter, r *http.Request) {

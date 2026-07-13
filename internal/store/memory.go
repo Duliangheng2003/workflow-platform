@@ -140,6 +140,17 @@ func (m *MemoryStore) UpdateInstance(inst *model.Instance) error {
 	return nil
 }
 
+func (m *MemoryStore) DeleteInstance(id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if _, ok := m.instances[id]; !ok {
+		return fmt.Errorf("instance not found: %s", id)
+	}
+	delete(m.instances, id)
+	return nil
+}
+
 // HumanTask operations
 
 func (m *MemoryStore) CreateHumanTask(task *model.HumanTask) error {

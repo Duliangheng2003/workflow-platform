@@ -1,5 +1,5 @@
 var API='',builderNodes=[],builderEdges=[],selectedNodeId=null,nodePositions={};
-var templates=[],_currentTaskId='',_canvasInited=false,_connectFrom=null;
+var templates=[],_canvasInited=false,_connectFrom=null;
 
 function api(p,o){return fetch(API+p,{headers:{'Content-Type':'application/json'},...o}).then(function(r){return r.status===204?{}:r.json().catch(function(){return{};});});}
 
@@ -36,16 +36,28 @@ function showPage(n){
   document.querySelectorAll('nav a').forEach(function(a){a.classList.remove('active');});
   var el=document.getElementById('page-'+n);if(el)el.classList.add('active');
   var ln=document.querySelector('nav a[data-page="'+n+'"]');if(ln)ln.classList.add('active');
-  if(n==='templates')loadTemplates();if(n==='instances')loadInstances();if(n==='tasks')loadTasks('pending');
+  if(n==='templates')loadTemplates();if(n==='instances')loadInstances();
 }
 function closeModal(id){document.getElementById(id).classList.remove('active');}
 function openModal(id){document.getElementById(id).classList.add('active');}
 
 // ===== Builder =====
-function openBuilder(){
+function openBuilder(existingData){
   nodePositions={};builderNodes=[];builderEdges=[];selectedNodeId=null;_canvasInited=false;_connectFrom=null;
   _startType='User Input';_cronExpr='';
   document.getElementById('add-popup').classList.remove('active');
+  if(existingData){
+    _startType=existingData.start_type||'User Input';
+    _cronExpr=existingData.cron_expr||'';
+    (existingData.nodes||[]).forEach(function(n){builderNodes.push(JSON.parse(JSON.stringify(n)));});
+    (existingData.edges||[]).forEach(function(e){builderEdges.push(JSON.parse(JSON.stringify(e)));});
+    // Restore node positions from saved positions or use auto-layout
+    if(existingData._positions){nodePositions=JSON.parse(JSON.stringify(existingData._positions));}
+    document.getElementById('builder-title').textContent='Edit: '+esc(existingData.name);
+  } else {
+    _startType='User Input';_cronExpr='';
+    document.getElementById('builder-title').textContent='New Workflow';
+  }
   renderCanvas();showPage('builder');
   setTimeout(initCanvas,100);setTimeout(centerView,200);
 }
@@ -339,10 +351,27 @@ function changeEdgeType(fromId,toId,newType){
 function openSavePopup(){
   document.getElementById('save-name').value='';
   document.getElementById('save-desc').value='';
+  // Pre-fill name/description when editing
+  if(_editingTemplateId){
+    var tmpl=templates.find(function(t){return t.id===_editingTemplateId;});
+    if(tmpl){
+      document.getElementById('save-name').value=tmpl.name;
+      document.getElementById('save-desc').value=tmpl.description||'';
+    }
+  }
   openModal('save-popup');
 }
 
 var localTemplates = [];
+var _editingTemplateId = null;
+
+function editTemplate(id){
+  api('/api/v1/templates/'+id).then(function(tmpl){
+    if(!tmpl||!tmpl.id){showToast('Failed to load template', 'error');return;}
+    _editingTemplateId=tmpl.id;
+    openBuilder(tmpl);
+  });
+}
 
 function saveWorkflow(){
   var name=document.getElementById('save-name').value.trim();
@@ -352,10 +381,20 @@ function saveWorkflow(){
   var edges=builderEdges.map(function(e){var r={from:e.from,to:e.to};if(e.edge_type)r.edge_type=e.edge_type;return r;});
   var body={name:name,description:document.getElementById('save-desc').value.trim(),nodes:builderNodes,edges:edges,start_type:_startType};
   if(_startType==='Schedule'&&_cronExpr)body.cron_expr=_cronExpr;
-  api('/api/v1/templates',{method:'POST',body:JSON.stringify(body)}).then(function(r){
-    if(r&&r.id){showToast('Workflow saved!', 'success');showPage('templates');}
-    else{showToast('Save failed: server not available', 'error');}
-  });
+  if(_editingTemplateId){
+    // Update existing template
+    body.id=_editingTemplateId;
+    api('/api/v1/templates/'+_editingTemplateId,{method:'PUT',body:JSON.stringify(body)}).then(function(r){
+      if(r&&r.id){showToast('Workflow updated!', 'success');_editingTemplateId=null;showPage('templates');}
+      else{showToast('Update failed: server not available', 'error');}
+    });
+  } else {
+    // Create new template
+    api('/api/v1/templates',{method:'POST',body:JSON.stringify(body)}).then(function(r){
+      if(r&&r.id){showToast('Workflow saved!', 'success');showPage('templates');}
+      else{showToast('Save failed: server not available', 'error');}
+    });
+  }
 }
 
 function testRunWorkflow(){
@@ -475,7 +514,7 @@ function showTestPanel(msg){
 }
 
 // ===== Other Pages =====
-function loadTemplates(){api('/api/v1/templates').then(function(d){templates=Array.isArray(d)?d:[];var t=document.getElementById('template-list');if(templates.length===0){t.innerHTML='<tr><td colspan="6" class="empty-state"><p>No templates yet.</p></td></tr>';return;}t.innerHTML=templates.map(function(x){var st=x.start_type||'User Input';var badge=st==='Schedule'?'<span class="badge" style="background:#fef3c7;color:#92400e;">Schedule</span>':'<span class="badge" style="background:#dbeafe;color:#1d4ed8;">Manual</span>';return'<tr><td><strong>'+esc(x.name)+'</strong><br><span style="font-size:0.75rem;color:#94a3b8;">'+esc(x.description||'')+'</span></td><td>'+badge+'</td><td>'+(x.nodes||[]).length+' nodes</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.last_run_at)+'</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.created_at)+'</td><td style="text-align:right;"><button class="btn btn-sm btn-primary" onclick="startInstance(\''+x.id+'\')">Run</button> <button class="btn btn-sm btn-danger" onclick="deleteTemplate(\''+x.id+'\')">Delete</button></td></tr>';}).join('');});}
+function loadTemplates(){api('/api/v1/templates').then(function(d){templates=Array.isArray(d)?d:[];var t=document.getElementById('template-list');if(templates.length===0){t.innerHTML='<tr><td colspan="6" class="empty-state"><p>No templates yet.</p></td></tr>';return;}t.innerHTML=templates.map(function(x){var st=x.start_type||'User Input';var badge=st==='Schedule'?'<span class="badge" style="background:#fef3c7;color:#92400e;">Schedule</span>':'<span class="badge" style="background:#dbeafe;color:#1d4ed8;">Manual</span>';return'<tr><td><strong>'+esc(x.name)+'</strong><br><span style="font-size:0.75rem;color:#94a3b8;">'+esc(x.description||'')+'</span></td><td>'+badge+'</td><td>'+(x.nodes||[]).length+' nodes</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.last_run_at)+'</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.created_at)+'</td><td style="text-align:right;"><button class="btn btn-sm btn-primary" onclick="startInstance(\''+x.id+'\')">Run</button> <button class="btn btn-sm btn-outline" onclick="editTemplate(\''+x.id+'\')">Edit</button> <button class="btn btn-sm btn-danger" onclick="deleteTemplate(\''+x.id+'\')">Delete</button></td></tr>';}).join('');});}
 function deleteTemplate(id){
   showConfirm('Delete this template?', function(ok){
     if(!ok)return;
@@ -536,11 +575,14 @@ function startInstance(id){
   },1000);
   showPage('instances');
 });}
-function loadInstances(){api('/api/v1/instances').then(function(d){var l=document.getElementById('instance-list');if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr>';return;}l.innerHTML=d.map(function(i){return'<tr><td><code>'+shortId(i.id)+'</code></td><td>'+esc(i.template_id)+'</td><td><span class="badge badge-'+i.status+'">'+i.status+'</span></td><td>'+(i.current_node_id||'-')+'</td><td>'+fmtTime(i.created_at)+'</td><td><button class="btn btn-xs btn-outline" onclick="showInstance(\''+i.id+'\')">Detail</button></td></tr>';}).join('');});}
+function loadInstances(){api('/api/v1/instances').then(function(d){var l=document.getElementById('instance-list');if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr>';return;}l.innerHTML=d.map(function(i){return'<tr><td><code>'+shortId(i.id)+'</code></td><td>'+esc(i.template_id)+'</td><td><span class="badge badge-'+i.status+'">'+i.status+'</span></td><td>'+(i.current_node_id||'-')+'</td><td>'+fmtTime(i.created_at)+'</td><td><button class="btn btn-xs btn-outline" onclick="showInstance(\''+i.id+'\')">Detail</button> <button class="btn btn-xs btn-danger" onclick="deleteInstance(\''+i.id+'\')">Delete</button></td></tr>';}).join('');});}
+function deleteInstance(id){
+  showConfirm('Delete this instance?', function(ok){
+    if(!ok)return;
+    api('/api/v1/instances/'+id,{method:'DELETE'}).then(function(){loadInstances();showToast('Instance deleted', 'success');});
+  }, 'Delete');
+}
 function showInstance(id){api('/api/v1/instances/'+id).then(function(i){var h='<div class="detail-grid"><div><div class="detail-label">ID</div><div class="detail-value"><code>'+i.id+'</code></div></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="badge badge-'+i.status+'">'+i.status+'</span></div></div><div><div class="detail-label">Template</div><div class="detail-value">'+i.template_id+'</div></div><div><div class="detail-label">Current Node</div><div class="detail-value">'+(i.current_node_id||'-')+'</div></div></div>'+(i.error?'<div style="background:#fef2f2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;">'+esc(i.error)+'</div>':'');if(i.state){var _tf=false;for(var _k in i.state){if(_k.indexOf('_thinking')>0){if(!_tf){h+='<div style="margin-top:12px;"><div class="detail-label" style="margin-bottom:6px;">Agent Thinking</div>';_tf=true;}h+='<div style="background:#f8fafc;border-radius:6px;padding:10px;margin-bottom:8px;font-family:monospace;font-size:0.78rem;line-height:1.6;">';var _steps=i.state[_k];if(Array.isArray(_steps)){_steps.forEach(function(s){h+='<div style="color:#1a1a2e;margin-bottom:2px;">'+esc(s)+'</div>';});}h+='</div>';}}if(_tf)h+='</div>';}h+='<div style="margin-top:8px;"><div class="detail-label">State</div><div class="json-box">'+JSON.stringify(i.state||{},null,2)+'</div></div><div style="margin-top:8px;"><div class="detail-label">Node States</div><div class="json-box">'+JSON.stringify(i.node_states||{},null,2)+'</div></div>';document.getElementById('instance-detail').innerHTML=h;openModal('modal-instance');});}
-function loadTasks(s){var u='/api/v1/human-tasks';if(s)u+='?status='+s;api(u).then(function(d){var l=document.getElementById('task-list');if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No tasks.</p></td></tr>';return;}l.innerHTML=d.map(function(t){return'<tr><td><code>'+shortId(t.id)+'</code></td><td>'+esc(t.node_description)+'</td><td>'+esc(t.assignee_group||'-')+'</td><td><span class="badge badge-'+t.status+'">'+t.status+'</span></td><td>'+fmtTime(t.created_at)+'</td><td>'+(t.status==='pending'?'<button class="btn btn-xs btn-primary" onclick="openResume(\''+t.id+'\')">Handle</button>':'Done')+'</td></tr>';}).join('');});}
-function openResume(id){_currentTaskId=id;api('/api/v1/human-tasks?status=pending').then(function(t){var task=Array.isArray(t)?t.find(function(x){return x.id===id;}):null;if(!task){showToast('Task not found', 'error');return;}document.getElementById('task-detail').innerHTML='<div class="detail-grid"><div><div class="detail-label">Node</div><div class="detail-value">'+esc(task.node_description)+'</div></div><div><div class="detail-label">Assignee</div><div class="detail-value">'+esc(task.assignee_group||'-')+'</div></div></div><div style="margin-top:8px;margin-bottom:12px;"><div class="detail-label">Input Data</div><div class="json-box">'+JSON.stringify(task.input_data||{},null,2)+'</div></div>';openModal('modal-resume');});}
-function resumeTask(a){var r;try{r=JSON.parse(document.getElementById('resume-data').value);}catch(e){r={comment:document.getElementById('resume-data').value};}api('/api/v1/human-tasks/'+_currentTaskId+'/resume',{method:'POST',body:JSON.stringify({action:a,result:r})}).then(function(){closeModal('modal-resume');loadTasks('pending');});}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function shortId(id){return id?id.substring(0,10)+'...':'-';}
 function fmtTime(t){return t?new Date(t).toLocaleString():'-';}

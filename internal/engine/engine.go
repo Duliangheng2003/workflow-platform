@@ -152,10 +152,16 @@ func (e *Engine) StartInstance(ctx context.Context, tmplID string, input map[str
 	// Build and compile the eino graph
 	graph, err := e.buildGraph(tmpl)
 	if err != nil {
+		inst.Status = model.StatusFailed
+		inst.Error = err.Error()
+		_ = e.store.UpdateInstance(inst)
 		return nil, fmt.Errorf("build graph: %w", err)
 	}
 	runnable, err := graph.Compile(ctx)
 	if err != nil {
+		inst.Status = model.StatusFailed
+		inst.Error = err.Error()
+		_ = e.store.UpdateInstance(inst)
 		return nil, fmt.Errorf("compile graph: %w", err)
 	}
 
@@ -281,7 +287,7 @@ func (e *Engine) buildGraph(tmpl *model.Template) (*compose.Graph[map[string]any
 		gb := compose.NewGraphBranch[map[string]any](branchFunc, endNodes)
 
 		source := pred
-		if source == "START" {
+		if source == "START" || source == "_start" {
 			source = compose.START
 		}
 		if err := g.AddBranch(source, gb); err != nil {
@@ -289,56 +295,67 @@ func (e *Engine) buildGraph(tmpl *model.Template) (*compose.Graph[map[string]any
 		}
 	}
 
-	// Phase 3: Add regular edges (skip condition nodes and Data edges)
+	// Phase 3: Add regular edges (skip condition nodes, Data edges, START/END edges)
 	for _, edge := range tmpl.Edges {
-		// Skip edges involving condition nodes (they're handled by branches)
 		if condNodes[edge.From] || condNodes[edge.To] {
 			continue
 		}
-		// Skip Data edges (they don't participate in execution flow)
 		if edge.EdgeType == model.EdgeTypeData {
 			continue
 		}
 		from := edge.From
 		to := edge.To
-		if from == "START" {
+		if from == "START" || from == "_start" {
 			from = compose.START
 		}
 		if to == "END" {
 			to = compose.END
 		}
-		if edge.From != "START" && edge.From != "END" && edge.To != "START" && edge.To != "END" {
+		if from != compose.START && to != compose.END {
 			if err := g.AddEdge(from, to); err != nil {
-				return nil, fmt.Errorf("add edge %s→%s: %w", edge.From, edge.To, err)
+				return nil, fmt.Errorf("add edge %s->%s: %w", edge.From, edge.To, err)
 			}
 		}
 	}
 
-	// Phase 4: Connect START/END to adjacent nodes
+	// Phase 4: Connect START to adjacent nodes
 	for _, edge := range tmpl.Edges {
 		if edge.EdgeType == model.EdgeTypeData {
 			continue
 		}
-		if edge.From == "START" {
+		if edge.From == "START" || edge.From == "_start" {
 			if !condNodes[edge.To] {
 				if err := g.AddEdge(compose.START, edge.To); err != nil {
-					return nil, fmt.Errorf("add START→%s: %w", edge.To, err)
+					return nil, fmt.Errorf("add START->%s: %w", edge.To, err)
 				}
 			}
 		}
+	}
+
+	// Phase 5: Auto-connect leaf nodes (nodes with no outgoing flow edges) to END
+	hasOutgoing := make(map[string]bool)
+	for _, edge := range tmpl.Edges {
+		if edge.EdgeType == model.EdgeTypeData {
+			continue
+		}
 		if edge.To == "END" {
-			if !condNodes[edge.From] {
-				if err := g.AddEdge(edge.From, compose.END); err != nil {
-					return nil, fmt.Errorf("add %s→END: %w", edge.From, err)
-				}
+			continue
+		}
+		hasOutgoing[edge.From] = true
+	}
+	for _, node := range tmpl.Nodes {
+		if condNodes[node.ID] {
+			continue
+		}
+		if !hasOutgoing[node.ID] {
+			if err := g.AddEdge(node.ID, compose.END); err != nil {
+				return nil, fmt.Errorf("add %s->END: %w", node.ID, err)
 			}
 		}
 	}
 
 	return g, nil
 }
-
-// nodeToLambda creates the correct Lambda wrapper for a node.
 func (e *Engine) nodeToLambda(tmpl *model.Template, node *model.Node) (*compose.Lambda, error) {
 	switch node.Type {
 	case model.NodeTypeCall:
