@@ -2,99 +2,83 @@
 
 [English](README.md) | [中文](README.zh_CN.md)
 
-基于 [Eino](https://github.com/cloudwego/eino) 的通用 AI 工作流引擎平台。
+基于 [Eino](https://github.com/cloudwego/eino) 的个人 AI 工作流引擎。通过可视化编辑器设计工作流，使用 AI Agent 执行多轮推理、调用工具、抓取网页、执行脚本。
 
-## 核心概念
+## 功能特性
 
-- **Template（流程模板）**：用户定义的工作流蓝图，包含节点和连接
-- **Instance（流程实例）**：模板的一次执行，记录运行状态和节点结果
-- **HumanTask（人工任务）**：流程中需要人工介入的暂停点
+- **可视化流程编辑器** — 拖拽节点到画布，用连线构建流程
+- **双类型连线** — Flow 边控制执行顺序，Data 边传递业务上下文
+- **AI Agent** — 基于 eino ReAct 实现多轮推理，知道自身有哪些工具可用
+- **内置工具** — `web_search`、`web_fetch`、`now`、`write_file`，每个 Agent 自动拥有
+- **节点工具** — API Call 和 Code 节点可被 Agent 作为工具调用
+- **提取器** — 上传文件，LLM 自动总结，通过 Data 边传给 Agent
+- **思考过程** — Agent 的中间推理步骤和工具调用会被记录并展示
+- **代码执行** — Code 节点执行 JS/Python 脚本，可被 Agent 调用
 
 ## 节点类型
 
-| 类型 | 说明 |
-|------|------|
-| `code` | HTTP 回调 — 调用用户配置的 webhook，传入当前 state |
-| `agent` | AI 智能体 — 基于 eino ReAct 循环，能自主调用其他节点作为工具 |
-| `condition` | 条件判断 — 基于 `state.path.to.value = expected` 表达式路由 |
-| `human` | 人工节点 — 暂停流程，等待审批后继续 |
+| 类型 | 标签 | 边框色 | 说明 |
+|------|------|--------|------|
+| `call` | API Call | 蓝色 | 调用外部 HTTP API |
+| `agent` | AI Agent | 紫色 | LLM 驱动的 ReAct 智能代理 |
+| `condition` | Condition | 橙色 | 表达式求值，控制流程分支 |
+| `code` | Code | 绿色 | 执行 JS/Python 脚本 |
+| `extractor` | Extractor | 青色 | 上传文件 + LLM 自动总结 |
+
+## 边类型
+
+| 类型 | 样式 | 方向 | 用途 |
+|------|------|------|------|
+| Flow | 实线+箭头 | A → B | 执行顺序 + 数据管道 |
+| Data | 虚线，无箭头 | A — B | 向 Agent 传递上下文（仅 Agent/Extractor 可创建） |
 
 ## 快速开始
 
 ### 1. 配置
 
-复制 `config.yaml` 并编辑：
+编辑 `config.yaml`：
 
 ```yaml
 server:
   port: 8080
 
 database:
-  host: 127.0.0.1
-  port: 3306
-  user: root
-  password: your_password
-  database: workflow_platform
+  # 为空则使用内存存储（重启后数据丢失）
+  host: ""
 
 llm:
   profiles:
-    - name: openai-gpt4o
+    - name: deepseek-chat
       provider: openai
-      model: gpt-4o
+      model: deepseek-chat
       api_key: sk-your-key
-      base_url: "https://api.openai.com"
+      base_url: "https://api.deepseek.com"
 ```
 
-> **注意**：如果 `database.host` 为空，服务将使用内存存储（重启后数据丢失）。
-
-### 2. 编译与启动
+### 2. 启动
 
 ```bash
-# 编译（需要 ldflags 处理 sonic 库兼容性）
-go build -ldflags="-checklinkname=0" -o workflow-platform ./cmd/server
+# 直接运行
+go run -ldflags=-checklinkname=0 ./cmd/server/
 
-# 或直接运行
-go run -ldflags="-checklinkname=0" ./cmd/server
-
-# 指定配置文件路径
-go run -ldflags="-checklinkname=0" ./cmd/server --config /path/to/config.yaml
+# 编译
+go build -ldflags=-checklinkname=0 -o workflow-server ./cmd/server/
+./workflow-server
 ```
 
-服务启动后访问 `http://localhost:8080` 即可看到管理界面。
+浏览器打开 `http://localhost:8080`。
 
-### 3. 生产部署
-
-```bash
-# 交叉编译 Linux amd64
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-checklinkname=0" -o workflow-platform ./cmd/server
-
-# 运行
-./workflow-platform --config config.yaml
-```
+> 注意：Go 1.24 需要 `-ldflags=-checklinkname=0` 参数解决 sonic 库兼容性问题。
 
 ## API 接口
 
-### 流程模板
+### 模板管理
 
 ```bash
-# 创建模板
+# 创建
 curl -X POST http://localhost:8080/api/v1/templates \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "review_flow",
-    "nodes": [
-      {"id": "validate", "type": "code", "webhook_url": "http://my-app/validate"},
-      {"id": "check",  "type": "condition", "expression": "state.validate.result == ok"},
-      {"id": "process", "type": "code", "webhook_url": "http://my-app/process"}
-    ],
-    "edges": [
-      {"from":"START","to":"validate"},
-      {"from":"validate","to":"check"},
-      {"from":"check","to":"process","output_port":"true"},
-      {"from":"check","to":"END","output_port":"false"},
-      {"from":"process","to":"END"}
-    ]
-  }'
+  -d '{"name":"my_workflow","nodes":[{"id":"call_1","type":"call","webhook_url":"https://api.example.com"}],"edges":[{"from":"START","to":"call_1"},{"from":"call_1","to":"END"}]}'
 
 # 列表
 curl http://localhost:8080/api/v1/templates
@@ -106,13 +90,13 @@ curl http://localhost:8080/api/v1/templates/{id}
 curl -X DELETE http://localhost:8080/api/v1/templates/{id}
 ```
 
-### 流程实例
+### 实例管理
 
 ```bash
 # 启动实例
-curl -X POST http://localhost:8080/api/v1/templates/{template_id}/instances \
+curl -X POST http://localhost:8080/api/v1/templates/{id}/instances \
   -H "Content-Type: application/json" \
-  -d '{"input": {"order_id": "12345"}}'
+  -d '{"input": {}}'
 
 # 列表
 curl http://localhost:8080/api/v1/instances
@@ -121,84 +105,33 @@ curl http://localhost:8080/api/v1/instances
 curl http://localhost:8080/api/v1/instances/{id}
 ```
 
-### 人工任务
-
-```bash
-# 查看待办（可按状态筛选）
-curl http://localhost:8080/api/v1/human-tasks?status=pending
-
-# 审批通过
-curl -X POST http://localhost:8080/api/v1/human-tasks/{task_id}/resume \
-  -H "Content-Type: application/json" \
-  -d '{"action": "approve", "result": {"comment": "通过"}}'
-
-# 拒绝
-curl -X POST http://localhost:8080/api/v1/human-tasks/{task_id}/resume \
-  -H "Content-Type: application/json" \
-  -d '{"action": "reject", "result": {"reason": "信息有误"}}'
-```
-
-## 配置说明
-
-### 数据库
-
-| 字段 | 说明 |
-|------|------|
-| `host` | MySQL 地址（为空则使用内存存储） |
-| `port` | MySQL 端口（默认 3306） |
-| `user` | MySQL 用户名 |
-| `password` | MySQL 密码 |
-| `database` | 数据库名 |
-
-启动时自动创建表结构。
-
-### LLM 配置
-
-API Key 仅存储在服务端，前端不可见：
-
-```yaml
-llm:
-  profiles:
-    - name: openai-gpt4o
-      provider: openai
-      model: gpt-4o
-      api_key: sk-xxx
-      base_url: "https://api.openai.com"
-    - name: deepseek-chat
-      provider: deepseek
-      model: deepseek-chat
-      api_key: sk-xxx
-      base_url: "https://api.deepseek.com"
-```
-
 ## 项目结构
 
 ```
-cmd/server/main.go              # 入口
+cmd/server/main.go              # 程序入口
+config.yaml                     # 配置文件
 internal/
-  config/config.go               # 配置加载
-  model/types.go                 # 数据模型
-  store/interface.go             # 存储接口
-  store/memory.go                # 内存存储
-  store/mysql/mysql.go           # MySQL 存储
-  engine/engine.go               # Eino 图构建器
-  engine/nodes.go                # code / condition / human 节点执行器
-  engine/agent.go                # Agent 节点（ReAct 循环 + 工具包装）
-  engine/chatmodel.go            # ChatModel 包装器
-  engine/llm.go                  # LLM API 客户端
-  api/handler.go                 # HTTP API 处理
-  server/server.go               # 服务启动 + 嵌入式前端
-  server/static/                 # 前端页面
-config.yaml                      # 配置文件
+  config/config.go              # 配置加载
+  model/types.go                # 数据模型
+  store/                        # 存储层（内存 / MySQL）
+  engine/
+    engine.go                   # Eino 图构建
+    nodes.go                    # 节点执行逻辑
+    agent.go                    # Agent + 工具包装
+    tools.go                    # 内置工具（now, web_fetch 等）
+    chatmodel.go                # ChatModel 包装器
+    llm.go                      # LLM API 客户端
+  api/handler.go                # HTTP API 处理
+  server/server.go              # 服务启动 + 嵌入式前端
+  server/static/                # 前端页面（HTML/CSS/JS）
 ```
 
 ## 架构说明
 
-运行时将用户定义的流程模板转换为 [Eino](https://github.com/cloudwego/eino) `compose.Graph`：
-
-- `code` / `agent` / `human` 节点 → `LambdaNode`
-- `condition` 节点 → 前驱节点上的 `GraphBranch`
-- State 以 `map[string]any` 形式在图中传递
-- Agent 节点内部运行 ReAct 循环，可调用其他节点作为工具
-- 人工节点通过 channel 实现中断/恢复
-- API Key 配置在 `config.yaml` 中，前端不可见
+- 流程模板在运行时转换为 eino `compose.Graph`
+- Flow 边构建执行图，Data 边不参与图构建（仅提供上下文）
+- Agent 使用 eino 的 `react` 包实现 ReAct 循环
+- 内置工具自动注册到每个 Agent
+- 思考过程通过 `react.WithMessageFuture()` 收集，存入实例状态
+- Extractor 使用配置的 LLM profile 对上传文件进行总结
+- Code 节点通过 `node`/`python3` 命令执行脚本
