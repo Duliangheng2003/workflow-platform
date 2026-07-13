@@ -522,7 +522,68 @@ function showTestPanel(msg){
 }
 
 // ===== Other Pages =====
-function loadTemplates(){api('/api/v1/templates').then(function(d){templates=Array.isArray(d)?d:[];var t=document.getElementById('template-list');if(templates.length===0){t.innerHTML='<tr><td colspan="6" class="empty-state"><p>No templates yet.</p></td></tr>';return;}t.innerHTML=templates.map(function(x){var st=x.start_type||'User Input';var badge=st==='Schedule'?'<span class="badge" style="background:#fef3c7;color:#92400e;">Schedule</span>':'<span class="badge" style="background:#dbeafe;color:#1d4ed8;">Manual</span>';return'<tr><td><strong>'+esc(x.name)+'</strong><br><span style="font-size:0.75rem;color:#94a3b8;">'+esc(x.description||'')+'</span></td><td>'+badge+'</td><td>'+(x.nodes||[]).length+' nodes</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.last_run_at)+'</td><td style="font-size:0.8rem;color:#64748b;">'+fmtTime(x.created_at)+'</td><td style="text-align:right;"><button class="btn btn-sm btn-primary" onclick="startInstance(\''+x.id+'\')">Run</button> <button class="btn btn-sm btn-outline" onclick="editTemplate(\''+x.id+'\')">Edit</button> <button class="btn btn-sm btn-danger" onclick="deleteTemplate(\''+x.id+'\')">Delete</button></td></tr>';}).join('');});}
+function loadTemplates(){
+  api('/api/v1/templates').then(function(d){
+    templates=Array.isArray(d)?d:[];
+    var el=document.getElementById('template-list');
+    if(templates.length===0){el.innerHTML='<div class="empty-state"><p>No templates yet.</p></div>';return;}
+    el.innerHTML=templates.map(function(x){
+      var st=x.start_type||'User Input';
+      var badge=st==='Schedule'?'<span class="tmpl-badge tmpl-badge-schedule">Schedule</span>':'<span class="tmpl-badge tmpl-badge-manual">Manual</span>';
+      var nodeCount=(x.nodes||[]).length;
+      var desc=x.description||'';
+      return '<div class="tmpl-card" data-id="'+x.id+'">'+
+        '<div class="tmpl-card-top">'+
+          '<div class="tmpl-card-name">'+esc(x.name)+'</div>'+
+          '<div class="tmpl-card-menu-btn" onclick="event.stopPropagation();toggleTmplMenu(\''+x.id+'\')">⋮</div>'+
+          '<div class="tmpl-card-menu" id="tmpl-menu-'+x.id+'">'+
+            '<div class="tmpl-menu-item" onclick="event.stopPropagation();closeTmplMenu();startInstance(\''+x.id+'\')"><span class="tmpl-menu-icon">&#9654;</span> Run</div>'+
+            '<div class="tmpl-menu-item" onclick="event.stopPropagation();closeTmplMenu();showTemplateDetail(\''+x.id+'\')"><span class="tmpl-menu-icon">&#9432;</span> Detail</div>'+
+            '<div class="tmpl-menu-item" onclick="event.stopPropagation();closeTmplMenu();editTemplate(\''+x.id+'\')"><span class="tmpl-menu-icon">&#9998;</span> Edit</div>'+
+            '<div class="tmpl-menu-divider"></div>'+
+            '<div class="tmpl-menu-item tmpl-menu-item-danger" onclick="event.stopPropagation();closeTmplMenu();deleteTemplate(\''+x.id+'\')"><span class="tmpl-menu-icon">&#10005;</span> Delete</div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="tmpl-card-bottom">'+
+          (desc?'<div class="tmpl-card-desc">'+esc(desc)+'</div>':'')+
+          '<div class="tmpl-card-meta">'+
+            badge+
+            '<span class="tmpl-meta-item">'+nodeCount+' nodes</span>'+
+            '<span class="tmpl-meta-item">'+fmtTime(x.created_at)+'</span>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  });
+}
+function toggleTmplMenu(id){
+  closeTmplMenu();
+  var menu=document.getElementById('tmpl-menu-'+id);
+  if(menu){
+    menu.classList.add('active');
+    // Raise the parent card above others
+    var card=menu.closest('.tmpl-card');
+    if(card)card.style.zIndex='10';
+  }
+}
+function closeTmplMenu(){
+  document.querySelectorAll('.tmpl-card-menu.active').forEach(function(m){
+    m.classList.remove('active');
+    var card=m.closest('.tmpl-card');
+    if(card)card.style.zIndex='';
+  });
+}
+function showTemplateDetail(id){
+  var tmpl=templates.find(function(t){return t.id===id;});
+  if(!tmpl){showToast('Template not found','error');return;}
+  document.getElementById('modal-instance-title').textContent='Template Detail';
+  var h='<div class="detail-grid"><div><div class="detail-label">Name</div><div class="detail-value"><strong>'+esc(tmpl.name)+'</strong></div></div><div><div class="detail-label">Type</div><div class="detail-value">'+(tmpl.start_type||'User Input')+'</div></div><div><div class="detail-label">Nodes</div><div class="detail-value">'+(tmpl.nodes||[]).length+'</div></div><div><div class="detail-label">Edges</div><div class="detail-value">'+(tmpl.edges||[]).length+'</div></div></div>'+
+    (tmpl.description?'<div style="margin-top:8px;"><div class="detail-label">Description</div><div style="font-size:0.85rem;color:#475569;">'+esc(tmpl.description)+'</div></div>':'')+
+    '<div style="margin-top:8px;"><div class="detail-label">Created</div><div style="font-size:0.85rem;color:#475569;">'+fmtTime(tmpl.created_at)+'</div></div>'+
+    (tmpl.last_run_at?'<div style="margin-top:8px;"><div class="detail-label">Last Run</div><div style="font-size:0.85rem;color:#475569;">'+fmtTime(tmpl.last_run_at)+'</div></div>':'');
+  document.getElementById('instance-detail').innerHTML=h;
+  openModal('modal-instance');
+}
 function deleteTemplate(id){
   showConfirm('Delete this template?', function(ok){
     if(!ok)return;
@@ -577,6 +638,7 @@ function deleteInstance(id){
   }, 'Delete');
 }
 function showInstance(id){
+  document.getElementById('modal-instance-title').textContent='Instance Detail';
   // Build template name map
   var tmplMap={};
   (templates||[]).forEach(function(t){tmplMap[t.id]=t.name;});
@@ -602,3 +664,4 @@ function fmtTime(t){
   return y+'/'+M+'/'+day+' '+h+':'+m+':'+s;
 }
 loadTemplates();
+document.addEventListener('click',function(e){if(!e.target.closest('.tmpl-card-menu')&&!e.target.closest('.tmpl-card-menu-btn'))closeTmplMenu();});

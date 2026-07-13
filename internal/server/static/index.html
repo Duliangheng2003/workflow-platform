@@ -18,7 +18,7 @@
 <div id="page-templates" class="page active">
   <div class="card">
     <div class="card-header"><h3>Workflow Templates</h3><button class="btn btn-primary" onclick="openBuilder()">+ New Template</button></div>
-    <table><thead><tr><th>Name</th><th>Type</th><th>Nodes</th><th>Last Run</th><th>Created</th><th></th></tr></thead><tbody id="template-list"><tr><td colspan="6" class="empty-state"><p>No templates yet.</p></td></tr></tbody></table>
+    <div id="template-list" class="template-grid"><div class="empty-state"><p>No templates yet.</p></div></div>
   </div>
 </div>
 <div id="page-instances" class="page">
@@ -87,7 +87,7 @@
   </div>
 </div>
 
-<div id="modal-instance" class="modal-overlay"><div class="modal" style="max-width:700px;"><h2>Instance Detail</h2><div id="instance-detail">Loading...</div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-instance')">Close</button></div></div></div>
+<div id="modal-instance" class="modal-overlay"><div class="modal" style="max-width:700px;"><h2 id="modal-instance-title">Instance Detail</h2><div id="instance-detail">Loading...</div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-instance')">Close</button></div></div></div>
 
 	<!-- Toast Container -->
 	<div id="toast-container"></div>
