@@ -51,6 +51,11 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 				tools = append(tools, newCodeScriptTool(n, state))
 			}
 		}
+		// Add built-in tools
+		tools = append(tools, newNowTool())
+		tools = append(tools, newWebFetchTool())
+		tools = append(tools, newWebSearchTool())
+		tools = append(tools, newWriteFileTool())
 
 		// 4. Collect business context from Data edges
 		// Data edges connect extractor/code nodes to provide business info
@@ -97,7 +102,6 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 			{Role: "user", Content: inputMsg},
 		}
 
-		// 7. Run the ReAct loop
 		// 7. Run the ReAct loop using eino's built-in react agent
 		reactAgent, err := react.NewAgent(ctx, &react.AgentConfig{
 			ToolCallingModel: cm,
@@ -112,16 +116,51 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 			return nil, fmt.Errorf("agent node %s: configure tools: %w", node.ID, err)
 		}
 
-		result, err := reactAgent.Generate(ctx, msgs, toolOpts...)
-		if err != nil {
-			return nil, fmt.Errorf("agent node %s: %w", node.ID, err)
+		// Get message future for collecting thinking trace
+		msgFutureOpt, msgFuture := react.WithMessageFuture()
+		allOpts := append(toolOpts, msgFutureOpt)
+
+		// Run Generate in a goroutine and collect messages concurrently
+		type genResult struct {
+			msg *schema.Message
+			err error
+		}
+		genCh := make(chan genResult, 1)
+		go func() {
+			msg, err := reactAgent.Generate(ctx, msgs, allOpts...)
+			genCh <- genResult{msg, err}
+		}()
+
+		// Collect thinking trace from the message future
+		var thinkingTrace []string
+		msgIter := msgFuture.GetMessages()
+		for {
+			msg, ok, err := msgIter.Next()
+			if !ok || err != nil {
+				break
+			}
+			if msg == nil {
+				continue
+			}
+			step := formatThinkingStep(msg)
+			if step != "" {
+				thinkingTrace = append(thinkingTrace, step)
+			}
 		}
 
-		// 8. Store result in state
+		// Wait for Generate to finish
+		res := <-genCh
+		if res.err != nil {
+			return nil, fmt.Errorf("agent node %s: %w", node.ID, res.err)
+		}
+		result := res.msg
+
+		// 8. Store result and thinking trace in state
 		state[node.ID] = map[string]any{
 			"content":    result.Content,
 			"tool_calls": result.ToolCalls,
 		}
+		state[node.ID+"_thinking"] = thinkingTrace
 		return state, nil
 	}
 }
@@ -262,4 +301,32 @@ func (t *codeScriptTool) InvokableRun(ctx context.Context, input string, opts ..
 		result += "\n// stderr: " + strings.TrimSpace(stderr.String())
 	}
 	return result, nil
+}
+
+// formatThinkingStep formats a message for the Agent's thinking trace.
+// Returns empty string for messages that don't need to be shown.
+func formatThinkingStep(msg *schema.Message) string {
+	switch msg.Role {
+	case "assistant":
+		// If the assistant message has content, it's a thought
+		if msg.Content != "" {
+			return "Thinking: " + msg.Content
+		}
+		// If it has tool calls, show them
+		if len(msg.ToolCalls) > 0 {
+			var steps []string
+			for _, tc := range msg.ToolCalls {
+				steps = append(steps, "Calling tool: "+tc.Function.Name+"("+tc.Function.Arguments+")")
+			}
+			return "Action: " + strings.Join(steps, " | ")
+		}
+	case "tool":
+		// Tool result
+		truncated := msg.Content
+		if len(truncated) > 200 {
+			truncated = truncated[:200] + "..."
+		}
+		return "Tool result: " + truncated
+	}
+	return ""
 }

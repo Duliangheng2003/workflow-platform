@@ -391,14 +391,17 @@ function updateNodeStatus(id,status){
   var svg=document.getElementById('canvas-svg');
   if(svg){
     var paths=svg.querySelectorAll('path');
-    paths.forEach(function(p){p.style.stroke='#94a3b8';p.style.strokeWidth='2';p.style.animation='none';});
+    paths.forEach(function(p){if(p.getAttribute('marker-end')){p.style.stroke='#94a3b8';p.style.strokeWidth='2';p.style.animation='none';}});
     if(status==='running'){
-      builderEdges.filter(function(e){return e.to===id;}).forEach(function(e){
+      builderEdges.filter(function(e){return e.to===id&&e.edge_type!=='data';}).forEach(function(e){
         var pos=calcLayout();
         var fp=pos[e.from],tp=pos[e.to];
         if(fp&&tp){
+          var fromNode=document.querySelector('.node[data-id="'+e.from+'"]');
+          var w=e.from==='_start'?140:(fromNode?fromNode.offsetWidth:172);
+          var x1=e.from==='_start'?fp.x+w:fp.x;
           svg.querySelectorAll('path').forEach(function(p){
-            if(p.getAttribute('d')&&p.getAttribute('d').indexOf('M'+fp.x)!==-1){
+            if(p.getAttribute('d')&&p.getAttribute('d').indexOf('M'+x1)!==-1){
               p.style.stroke='#0f3460';p.style.strokeWidth='3';
               p.style.animation='flow 1s linear infinite';
             }
@@ -421,7 +424,7 @@ function showTestPanel(msg){
   var body=document.getElementById('test-result-body');
   if(!body)return;
   var isError=msg.indexOf('failed')>=0||msg.indexOf('FAILED')>=0;
-  var icon=isError?'<span style="color:#dc2626;font-size:1.5rem;">&#10007;</span>':'<span style="color:#059669;font-size:1.5rem;">&#10003;</span>';
+  var icon=isError?'<span style="color:#dc2626;font-size:1.2rem;font-weight:700;">FAILED</span>':'<span style="color:#059669;font-size:1.2rem;font-weight:700;">SUCCESS</span>';
   var color=isError?'#dc2626':'#059669';
   body.innerHTML='<div style="text-align:center;padding:20px 0;">'+icon+'</div><div style="text-align:center;font-weight:600;color:'+color+';margin-bottom:16px;">'+esc(msg)+'</div>';
   if(_testLog.length>0){
@@ -451,7 +454,7 @@ function startInstance(id){
   }
   var i=prompt('Initial data (JSON):','{}');if(i===null)return;try{var d=JSON.parse(i||'{}');}catch(e){alert('Invalid JSON');return;}api('/api/v1/templates/'+id+'/instances',{method:'POST',body:JSON.stringify({input:d})}).then(function(r){alert('Instance started');showPage('instances');});}
 function loadInstances(){api('/api/v1/instances').then(function(d){var l=document.getElementById('instance-list');if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr>';return;}l.innerHTML=d.map(function(i){return'<tr><td><code>'+shortId(i.id)+'</code></td><td>'+esc(i.template_id)+'</td><td><span class="badge badge-'+i.status+'">'+i.status+'</span></td><td>'+(i.current_node_id||'-')+'</td><td>'+fmtTime(i.created_at)+'</td><td><button class="btn btn-xs btn-outline" onclick="showInstance(\''+i.id+'\')">Detail</button></td></tr>';}).join('');});}
-function showInstance(id){api('/api/v1/instances/'+id).then(function(i){document.getElementById('instance-detail').innerHTML='<div class="detail-grid"><div><div class="detail-label">ID</div><div class="detail-value"><code>'+i.id+'</code></div></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="badge badge-'+i.status+'">'+i.status+'</span></div></div><div><div class="detail-label">Template</div><div class="detail-value">'+i.template_id+'</div></div><div><div class="detail-label">Current Node</div><div class="detail-value">'+(i.current_node_id||'-')+'</div></div></div>'+(i.error?'<div style="background:#fef2f2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;">'+esc(i.error)+'</div>':'')+'<div style="margin-top:8px;"><div class="detail-label">State</div><div class="json-box">'+JSON.stringify(i.state||{},null,2)+'</div></div><div style="margin-top:8px;"><div class="detail-label">Node States</div><div class="json-box">'+JSON.stringify(i.node_states||{},null,2)+'</div></div>';openModal('modal-instance');});}
+function showInstance(id){api('/api/v1/instances/'+id).then(function(i){var h='<div class="detail-grid"><div><div class="detail-label">ID</div><div class="detail-value"><code>'+i.id+'</code></div></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="badge badge-'+i.status+'">'+i.status+'</span></div></div><div><div class="detail-label">Template</div><div class="detail-value">'+i.template_id+'</div></div><div><div class="detail-label">Current Node</div><div class="detail-value">'+(i.current_node_id||'-')+'</div></div></div>'+(i.error?'<div style="background:#fef2f2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;">'+esc(i.error)+'</div>':'');if(i.state){var _tf=false;for(var _k in i.state){if(_k.indexOf('_thinking')>0){if(!_tf){h+='<div style="margin-top:12px;"><div class="detail-label" style="margin-bottom:6px;">Agent Thinking</div>';_tf=true;}h+='<div style="background:#f8fafc;border-radius:6px;padding:10px;margin-bottom:8px;font-family:monospace;font-size:0.78rem;line-height:1.6;">';var _steps=i.state[_k];if(Array.isArray(_steps)){_steps.forEach(function(s){h+='<div style="color:#1a1a2e;margin-bottom:2px;">'+esc(s)+'</div>';});}h+='</div>';}}if(_tf)h+='</div>';}h+='<div style="margin-top:8px;"><div class="detail-label">State</div><div class="json-box">'+JSON.stringify(i.state||{},null,2)+'</div></div><div style="margin-top:8px;"><div class="detail-label">Node States</div><div class="json-box">'+JSON.stringify(i.node_states||{},null,2)+'</div></div>';document.getElementById('instance-detail').innerHTML=h;openModal('modal-instance');});}
 function loadTasks(s){var u='/api/v1/human-tasks';if(s)u+='?status='+s;api(u).then(function(d){var l=document.getElementById('task-list');if(!Array.isArray(d)||d.length===0){l.innerHTML='<tr><td colspan="6" class="empty-state"><p>No tasks.</p></td></tr>';return;}l.innerHTML=d.map(function(t){return'<tr><td><code>'+shortId(t.id)+'</code></td><td>'+esc(t.node_description)+'</td><td>'+esc(t.assignee_group||'-')+'</td><td><span class="badge badge-'+t.status+'">'+t.status+'</span></td><td>'+fmtTime(t.created_at)+'</td><td>'+(t.status==='pending'?'<button class="btn btn-xs btn-primary" onclick="openResume(\''+t.id+'\')">Handle</button>':'Done')+'</td></tr>';}).join('');});}
 function openResume(id){_currentTaskId=id;api('/api/v1/human-tasks?status=pending').then(function(t){var task=Array.isArray(t)?t.find(function(x){return x.id===id;}):null;if(!task){alert('Task not found');return;}document.getElementById('task-detail').innerHTML='<div class="detail-grid"><div><div class="detail-label">Node</div><div class="detail-value">'+esc(task.node_description)+'</div></div><div><div class="detail-label">Assignee</div><div class="detail-value">'+esc(task.assignee_group||'-')+'</div></div></div><div style="margin-top:8px;margin-bottom:12px;"><div class="detail-label">Input Data</div><div class="json-box">'+JSON.stringify(task.input_data||{},null,2)+'</div></div>';openModal('modal-resume');});}
 function resumeTask(a){var r;try{r=JSON.parse(document.getElementById('resume-data').value);}catch(e){r={comment:document.getElementById('resume-data').value};}api('/api/v1/human-tasks/'+_currentTaskId+'/resume',{method:'POST',body:JSON.stringify({action:a,result:r})}).then(function(){closeModal('modal-resume');loadTasks('pending');});}
