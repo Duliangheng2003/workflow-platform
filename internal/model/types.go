@@ -13,6 +13,7 @@ const (
 	NodeTypeAgent     NodeType = "agent"     // AI Agent
 	NodeTypeCode      NodeType = "code"      // Code script (JS/Python)
 	NodeTypeExtractor NodeType = "extractor" // File data extractor
+	NodeTypeFilter     NodeType = "filter"     // Data filter/transform
 )
 
 // LLMConfig defines configuration for an LLM node.

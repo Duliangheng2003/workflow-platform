@@ -92,31 +92,31 @@ func (t *webFetchTool) InvokableRun(ctx context.Context, input string, opts ...t
 		URL string `json:"url"`
 	}
 	if err := json.Unmarshal([]byte(input), &params); err != nil {
-		return "", fmt.Errorf("invalid params: %w", err)
+		return fmt.Sprintf("Error: invalid params: %v", err), nil
 	}
 	if params.URL == "" {
-		return "", fmt.Errorf("url is required")
+		return "Error: url is required", nil
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, params.URL, nil)
 	if err != nil {
-		return "", fmt.Errorf("create request: %w", err)
+		return fmt.Sprintf("Error: create request: %v", err), nil
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; WorkflowAgent/1.0)")
 
 	resp, err := t.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("fetch failed: %w", err)
+		return fmt.Sprintf("Error: fetch failed: %v", err), nil
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("read response: %w", err)
+		return fmt.Sprintf("Error: read response: %v", err), nil
 	}
 
 	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body[:min(len(body), 500)]))
+return fmt.Sprintf("Error: HTTP %d: %s", resp.StatusCode, string(body[:min(len(body), 500)])), nil
 	}
 
 	// Truncate very long responses
@@ -165,10 +165,10 @@ func (t *writeFileTool) InvokableRun(ctx context.Context, input string, opts ...
 		Content string `json:"content"`
 	}
 	if err := json.Unmarshal([]byte(input), &params); err != nil {
-		return "", fmt.Errorf("invalid params: %w", err)
+		return fmt.Sprintf("Error: invalid params: %v", err), nil
 	}
 	if params.Path == "" {
-		return "", fmt.Errorf("path is required")
+		return "Error: path is required", nil
 	}
 
 	// Resolve path
@@ -176,7 +176,7 @@ func (t *writeFileTool) InvokableRun(ctx context.Context, input string, opts ...
 	if !filepath.IsAbs(filePath) {
 		wd, err := os.Getwd()
 		if err != nil {
-			return "", fmt.Errorf("get working directory: %w", err)
+			return fmt.Sprintf("Error: get working directory: %v", err), nil
 		}
 		filePath = filepath.Join(wd, filePath)
 	}
@@ -184,12 +184,12 @@ func (t *writeFileTool) InvokableRun(ctx context.Context, input string, opts ...
 	// Create parent directories
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return "", fmt.Errorf("create directories: %w", err)
+		return fmt.Sprintf("Error: create directories: %v", err), nil
 	}
 
 	// Write file
 	if err := os.WriteFile(filePath, []byte(params.Content), 0644); err != nil {
-		return "", fmt.Errorf("write file: %w", err)
+		return fmt.Sprintf("Error: write file: %v", err), nil
 	}
 
 	return fmt.Sprintf("File written: %s (%d bytes)", filePath, len(params.Content)), nil
@@ -242,7 +242,7 @@ func (t *readFileTool) InvokableRun(ctx context.Context, input string, opts ...t
 		Query   string `json:"query"`
 	}
 	if err := json.Unmarshal([]byte(input), &params); err != nil {
-		return "", fmt.Errorf("invalid params: %w", err)
+		return fmt.Sprintf("Error: invalid params: %v", err), nil
 	}
 
 	switch params.Action {
@@ -253,7 +253,7 @@ func (t *readFileTool) InvokableRun(ctx context.Context, input string, opts ...t
 	case "search":
 		return t.searchFiles(params.Path, params.Pattern, params.Query)
 	default:
-		return "", fmt.Errorf("unknown action: %s (use 'read', 'list', or 'search')", params.Action)
+		return fmt.Sprintf("Error: unknown action: %s (use 'read', 'list', or 'search')", params.Action), nil
 	}
 }
 
@@ -262,12 +262,12 @@ func (t *readFileTool) readFile(filePath string) (string, error) {
 	// Security: prevent directory traversal
 	absPath, err := filepath.Abs(fullPath)
 	if err != nil {
-		return "", fmt.Errorf("invalid path: %w", err)
+		return fmt.Sprintf("Error: invalid path: %v", err), nil
 	}
 
 	data, err := os.ReadFile(absPath)
 	if err != nil {
-		return "", fmt.Errorf("read file: %w", err)
+		return fmt.Sprintf("Error: read file: %v", err), nil
 	}
 
 	// Truncate very large files
@@ -284,12 +284,12 @@ func (t *readFileTool) listFiles(dirPath string) (string, error) {
 	fullPath := filepath.Join(t.workDir, dirPath)
 	absPath, err := filepath.Abs(fullPath)
 	if err != nil {
-		return "", fmt.Errorf("invalid path: %w", err)
+		return fmt.Sprintf("Error: invalid path: %v", err), nil
 	}
 
 	entries, err := os.ReadDir(absPath)
 	if err != nil {
-		return "", fmt.Errorf("list directory: %w", err)
+		return fmt.Sprintf("Error: list directory: %v", err), nil
 	}
 
 	var sb strings.Builder
@@ -312,7 +312,7 @@ func (t *readFileTool) listFiles(dirPath string) (string, error) {
 
 func (t *readFileTool) searchFiles(dirPath, pattern, query string) (string, error) {
 	if query == "" {
-		return "", fmt.Errorf("search query is required")
+		return "Error: search query is required", nil
 	}
 	if pattern == "" {
 		pattern = "*"
@@ -321,12 +321,12 @@ func (t *readFileTool) searchFiles(dirPath, pattern, query string) (string, erro
 	fullPath := filepath.Join(t.workDir, dirPath)
 	absPath, err := filepath.Abs(fullPath)
 	if err != nil {
-		return "", fmt.Errorf("invalid path: %w", err)
+		return fmt.Sprintf("Error: invalid path: %v", err), nil
 	}
 
 	matches, err := filepath.Glob(filepath.Join(absPath, pattern))
 	if err != nil {
-		return "", fmt.Errorf("glob pattern: %w", err)
+		return fmt.Sprintf("Error: glob pattern: %v", err), nil
 	}
 
 	var sb strings.Builder
@@ -400,10 +400,10 @@ func (t *webSearchTool) InvokableRun(ctx context.Context, input string, opts ...
 		Query string `json:"query"`
 	}
 	if err := json.Unmarshal([]byte(input), &params); err != nil {
-		return "", fmt.Errorf("invalid params: %w", err)
+		return fmt.Sprintf("Error: invalid params: %v", err), nil
 	}
 	if params.Query == "" {
-		return "", fmt.Errorf("query is required")
+		return "Error: query is required", nil
 	}
 
 	return t.searchDuckDuckGo(ctx, params.Query)
@@ -417,19 +417,19 @@ func (t *webSearchTool) searchDuckDuckGo(ctx context.Context, query string) (str
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("create request: %w", err)
+		return fmt.Sprintf("Error: create request: %v", err), nil
 	}
 	req.Header.Set("User-Agent", "WorkflowAgent/1.0")
 
 	resp, err := t.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("search request failed: %w", err)
+		return fmt.Sprintf("Error: search request failed: %v", err), nil
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("read response: %w", err)
+		return fmt.Sprintf("Error: read response: %v", err), nil
 	}
 
 	var result struct {
@@ -454,7 +454,7 @@ func (t *webSearchTool) searchDuckDuckGo(ctx context.Context, query string) (str
 	}
 
 	if err := json.Unmarshal(body, &result); err != nil {
-		return "", fmt.Errorf("parse response: %w", err)
+		return fmt.Sprintf("Error: parse response: %v", err), nil
 	}
 
 	// Build a readable result string
