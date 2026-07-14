@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -126,6 +127,8 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 			err error
 		}
 		genCh := make(chan genResult, 1)
+		instID := getInstanceID(ctx)
+		log.Printf("[Agent %s] starting with %d tools, max %d turns", instID, len(tools), maxTurns)
 		go func() {
 			msg, err := reactAgent.Generate(ctx, msgs, allOpts...)
 			genCh <- genResult{msg, err}
@@ -133,7 +136,6 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 
 		// Collect thinking trace from the message future
 		var thinkingTrace []string
-		instID := getInstanceID(ctx)
 		msgIter := msgFuture.GetMessages()
 		for {
 			msg, ok, err := msgIter.Next()
@@ -146,6 +148,7 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 			step := formatThinkingStep(msg)
 			if step != "" {
 				thinkingTrace = append(thinkingTrace, step)
+				log.Printf("[Agent %s] %s", instID, step)
 				e.AddThinkingStep(instID, step)
 			}
 		}
@@ -163,6 +166,7 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 			"tool_calls": result.ToolCalls,
 		}
 		state[node.ID+"_thinking"] = thinkingTrace
+		log.Printf("[Agent %s] completed", instID)
 		return state, nil
 	}
 }

@@ -85,6 +85,7 @@ type Template struct {
 	Edges       []Edge     `json:"edges"`
 	StartType   string     `json:"start_type,omitempty"`
 	CronExpr    string     `json:"cron_expr,omitempty"`
+		StartInput  string `json:"start_input,omitempty"`
 	LastRunAt   *time.Time `json:"last_run_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
@@ -165,4 +166,5 @@ type CreateTemplateRequest struct {
 	Edges       []Edge `json:"edges"`
 	StartType   string `json:"start_type,omitempty"`
 	CronExpr    string `json:"cron_expr,omitempty"`
+		StartInput  string `json:"start_input,omitempty"`
 }

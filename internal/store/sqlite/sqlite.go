@@ -33,6 +33,9 @@ func NewStore(dbPath string) (*Store, error) {
 		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
 
+	// Add start_input column if missing (migration for existing DBs)
+	db.Exec("ALTER TABLE templates ADD COLUMN start_input TEXT DEFAULT ''")
+
 	s := &Store{db: db}
 	if err := s.migrate(); err != nil {
 		return nil, fmt.Errorf("migrate: %w", err)
@@ -51,6 +54,7 @@ func (s *Store) migrate() error {
 			edges TEXT,
 			start_type TEXT DEFAULT '',
 			cron_expr TEXT DEFAULT '',
+			start_input TEXT DEFAULT '',
 			last_run_at DATETIME,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL
@@ -107,20 +111,20 @@ func (s *Store) CreateTemplate(tmpl *model.Template) error {
 	edges, _ := json.Marshal(tmpl.Edges)
 
 	_, err := s.db.Exec(
-		`INSERT INTO templates (id, name, description, nodes, edges, start_type, cron_expr, last_run_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		tmpl.ID, tmpl.Name, tmpl.Description, string(nodes), string(edges), tmpl.StartType, tmpl.CronExpr, tmpl.LastRunAt, tmpl.CreatedAt, tmpl.UpdatedAt,
+		`INSERT INTO templates (id, name, description, nodes, edges, start_type, cron_expr, start_input, last_run_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		tmpl.ID, tmpl.Name, tmpl.Description, string(nodes), string(edges), tmpl.StartType, tmpl.CronExpr, tmpl.StartInput, tmpl.LastRunAt, tmpl.CreatedAt, tmpl.UpdatedAt,
 	)
 	return err
 }
 
 func (s *Store) GetTemplate(id string) (*model.Template, error) {
 	row := s.db.QueryRow(
-		`SELECT id, name, description, nodes, edges, start_type, cron_expr, last_run_at, created_at, updated_at FROM templates WHERE id = ?`, id,
+		`SELECT id, name, description, nodes, edges, start_type, cron_expr, start_input, last_run_at, created_at, updated_at FROM templates WHERE id = ?`, id,
 	)
 
 	var tmpl model.Template
 	var nodesStr, edgesStr string
-	err := row.Scan(&tmpl.ID, &tmpl.Name, &tmpl.Description, &nodesStr, &edgesStr, &tmpl.StartType, &tmpl.CronExpr, &tmpl.LastRunAt, &tmpl.CreatedAt, &tmpl.UpdatedAt)
+	err := row.Scan(&tmpl.ID, &tmpl.Name, &tmpl.Description, &nodesStr, &edgesStr, &tmpl.StartType, &tmpl.CronExpr, &tmpl.StartInput, &tmpl.LastRunAt, &tmpl.CreatedAt, &tmpl.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("template not found: %s", id)
 	}
@@ -135,7 +139,7 @@ func (s *Store) GetTemplate(id string) (*model.Template, error) {
 
 func (s *Store) ListTemplates() ([]*model.Template, error) {
 	rows, err := s.db.Query(
-		`SELECT id, name, description, nodes, edges, start_type, cron_expr, last_run_at, created_at, updated_at FROM templates ORDER BY created_at DESC`,
+		`SELECT id, name, description, nodes, edges, start_type, cron_expr, start_input, last_run_at, created_at, updated_at FROM templates ORDER BY created_at DESC`,
 	)
 	if err != nil {
 		return nil, err
@@ -146,7 +150,7 @@ func (s *Store) ListTemplates() ([]*model.Template, error) {
 	for rows.Next() {
 		var tmpl model.Template
 		var nodesStr, edgesStr string
-		if err := rows.Scan(&tmpl.ID, &tmpl.Name, &tmpl.Description, &nodesStr, &edgesStr, &tmpl.StartType, &tmpl.CronExpr, &tmpl.LastRunAt, &tmpl.CreatedAt, &tmpl.UpdatedAt); err != nil {
+		if err := rows.Scan(&tmpl.ID, &tmpl.Name, &tmpl.Description, &nodesStr, &edgesStr, &tmpl.StartType, &tmpl.CronExpr, &tmpl.StartInput, &tmpl.LastRunAt, &tmpl.CreatedAt, &tmpl.UpdatedAt); err != nil {
 			return nil, err
 		}
 		json.Unmarshal([]byte(nodesStr), &tmpl.Nodes)
@@ -172,8 +176,8 @@ func (s *Store) UpdateTemplate(tmpl *model.Template) error {
 	tmpl.UpdatedAt = time.Now()
 	nodes, _ := json.Marshal(tmpl.Nodes)
 	edges, _ := json.Marshal(tmpl.Edges)
-	_, err := s.db.Exec(`UPDATE templates SET name=?, description=?, nodes=?, edges=?, start_type=?, cron_expr=?, last_run_at=?, updated_at=? WHERE id=?`,
-		tmpl.Name, tmpl.Description, string(nodes), string(edges), tmpl.StartType, tmpl.CronExpr, tmpl.LastRunAt, tmpl.UpdatedAt, tmpl.ID)
+	_, err := s.db.Exec(`UPDATE templates SET name=?, description=?, nodes=?, edges=?, start_type=?, cron_expr=?, start_input=?, last_run_at=?, updated_at=? WHERE id=?`,
+		tmpl.Name, tmpl.Description, string(nodes), string(edges), tmpl.StartType, tmpl.CronExpr, tmpl.StartInput, tmpl.LastRunAt, tmpl.UpdatedAt, tmpl.ID)
 	return err
 }
 

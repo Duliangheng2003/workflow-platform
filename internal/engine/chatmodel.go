@@ -188,15 +188,26 @@ func (m *chatModel) Stream(ctx context.Context, msgs []*schema.Message, opts ...
 
 // toolInfoToOpenAI converts eino's ToolInfo to OpenAI's tool definition format.
 func toolInfoToOpenAI(ti *schema.ToolInfo) map[string]any {
+	params := map[string]any{
+		"type":       "object",
+		"properties": map[string]any{},
+	}
+	if ti.ParamsOneOf != nil {
+		if js, err := ti.ParamsOneOf.ToJSONSchema(); err == nil && js != nil {
+			if b, err := json.Marshal(js); err == nil {
+				var jsMap map[string]any
+				if json.Unmarshal(b, &jsMap) == nil {
+					params = jsMap
+				}
+			}
+		}
+	}
 	return map[string]any{
 		"type": "function",
 		"function": map[string]any{
 			"name":        ti.Name,
 			"description": ti.Desc,
-			"parameters": map[string]any{
-				"type":       "object",
-				"properties": map[string]any{},
-			},
+			"parameters":  params,
 		},
 	}
 }

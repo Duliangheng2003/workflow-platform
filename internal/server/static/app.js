@@ -46,16 +46,17 @@ function openModal(id){document.getElementById(id).classList.add('active');}
 // ===== Builder =====
 function openBuilder(existingData){
   nodePositions={};builderNodes=[];builderEdges=[];selectedNodeId=null;_canvasInited=false;_connectFrom=null;
-  _startType='User Input';_cronExpr='';
+  _startType='User Input';_cronExpr='';_startInput='{}';
   document.getElementById('add-popup').classList.remove('active');
   if(existingData){
     _startType=existingData.start_type||'User Input';
     _cronExpr=existingData.cron_expr||'';
+    _startInput=existingData.start_input||'{}';
     (existingData.nodes||[]).forEach(function(n){builderNodes.push(JSON.parse(JSON.stringify(n)));});
     (existingData.edges||[]).forEach(function(e){builderEdges.push(JSON.parse(JSON.stringify(e)));});
     document.getElementById('builder-title').textContent='Edit: '+esc(existingData.name);
   } else {
-    _startType='User Input';_cronExpr='';
+    _startType='User Input';_cronExpr='';_startInput='{}';
     document.getElementById('builder-title').textContent='New Workflow';
   }
   renderCanvas();showPage('builder');
@@ -122,6 +123,7 @@ function renderCanvas(){
 var _startType='User Input';
 var startTypes=['User Input','Schedule'];
 var _cronExpr='';
+var _startInput='{}';
 
 function toggleStartTypePopup(){var p=document.getElementById('start-type-popup');if(p)p.classList.toggle('active');}
 function changeStartType(v){_startType=v;document.getElementById('start-type-popup').classList.remove('active');renderCanvas();showProperties();}
@@ -279,10 +281,36 @@ function selectNodeById(id){
 function showProperties(){
   var panel=document.getElementById('node-properties');
   if(selectedNodeId==='_start'){
-    panel.innerHTML='<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #e2e8f0;"><div style="font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:50%;background:#059669;display:inline-block;"></span> START</div><div class="form-group"><label>Trigger Type</label><select onchange="changeStartType(this.value)">'+startTypes.map(function(t){return'<option value="'+t+'"'+(t===_startType?' selected':'')+'>'+t+'</option>';}).join('')+'</select></div>'+
-(_startType==='Schedule'?'<div class="form-group"><label>Cron Expression</label><input value="'+esc(_cronExpr)+'" placeholder="0 9 * * *" onchange="_cronExpr=this.value"><p style="font-size:0.75rem;color:#94a3b8;margin-top:4px;">Format: minute hour day month weekday (e.g. 0 9 * * * = daily at 9:00)</p></div>':'')+
-'<p style="font-size:0.8rem;color:#64748b;line-height:1.5;margin-top:8px;">'+
-(_startType==='Schedule'?'Configure the cron schedule for automatic execution. The workflow will run at the specified times.':'Configure how this workflow is triggered. The start node defines the input parameters for the workflow.')+'</p></div>';
+    // Build schedule editor: parse cron or use defaults
+    var cronParts=(_cronExpr||'').split(' ');
+    var schedMin=cronParts[0]||'*';
+    var schedHour=cronParts[1]||'*';
+    var schedDay=cronParts[2]||'*';
+    var schedMonth=cronParts[3]||'*';
+    var schedWeekday=cronParts[4]||'*';
+    var schedMode='daily';
+    var schedInterval=60;
+    var schedIntervalUnit='minutes';
+    if(schedMin!=='*'&&schedHour==='*'&&schedDay==='*'&&schedMonth==='*'&&schedWeekday==='*'){
+      schedMode='every';
+      schedInterval=parseInt(schedMin)||60;
+      if(schedInterval>=1440){schedInterval=Math.round(schedInterval/1440);schedIntervalUnit='days';}
+      else if(schedInterval>=60){schedInterval=Math.round(schedInterval/60);schedIntervalUnit='hours';}
+      else{schedIntervalUnit='minutes';}
+    }
+    var schedTime=schedHour!=='*'?('00'+schedHour).slice(-2)+':'+('00'+schedMin).slice(-2):'09:00';
+    panel.innerHTML='<div style="background:#fff;border-radius:8px;padding:14px;border:1px solid #e2e8f0;"><div style="font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:50%;background:#059669;display:inline-block;"></span> START</div>'+
+      '<div class="form-group"><label>Trigger Type</label><select onchange="changeStartType(this.value)">'+startTypes.map(function(t){return'<option value="'+t+'"'+(t===_startType?' selected':'')+'>'+t+'</option>';}).join('')+'</select></div>'+
+      (_startType==='User Input'?
+        '<div class="form-group"><label>Input Data</label><textarea rows="4" onchange="_startInput=this.value">'+esc(_startInput)+'</textarea><p style="font-size:0.75rem;color:#94a3b8;margin-top:4px;">Enter plain text or JSON data to pass to workflow nodes.</p></div>'
+      :'')+
+      (_startType==='Schedule'?
+        '<div class="form-group"><label>Schedule Mode</label><select id="sched-mode" onchange="updateScheduleMode(this.value)"><option value="daily" '+(schedMode==='daily'?'selected':'')+'>Daily at specific time</option><option value="every" '+(schedMode==='every'?'selected':'')+'>Every N minutes/hours</option></select></div>'+
+        '<div id="sched-daily" style="'+(schedMode!=='daily'?'display:none':'')+'"><div class="form-group"><label>Time</label><input type="time" value="'+schedTime+'" onchange="updateScheduleTime(this.value)"></div></div>'+
+        '<div id="sched-every" style="'+(schedMode!=='every'?'display:none':'')+'"><div style="display:flex;gap:4px;"><div style="flex:1;"><input type="number" value="'+schedInterval+'" min="1" onchange="updateScheduleInterval(this.value)"></div><div style="flex:0 0 100px;"><select onchange="updateScheduleUnit(this.value)"><option value="minutes" '+(schedIntervalUnit==='minutes'?'selected':'')+'>Minutes</option><option value="hours" '+(schedIntervalUnit==='hours'?'selected':'')+'>Hours</option></select></div></div></div>'+
+        '<p style="font-size:0.75rem;color:#94a3b8;margin-top:4px;">The workflow will run automatically on the configured schedule.</p>'
+      :'')+
+    '</div>';
     return;
   }
   var node=builderNodes.find(function(n){return n.id===selectedNodeId;});
@@ -292,7 +320,7 @@ function showProperties(){
   h+='<div class="form-group"><label>ID</label><input value="'+esc(node.id)+'" onchange="updateNode(\'id\',this.value)"></div>';
   if(node.type==='call'){
   h+='<div class="form-group"><label>Description</label><input value="'+esc(node.description||'')+'" onchange="updateNode(\'description\',this.value)"></div>';
-  h+='<div style="display:flex;gap:8px;margin-bottom:14px;"><div style="flex:0 0 100px;"><label>Method</label><select onchange="updateNode(\'method\',this.value)"><option value="GET"'+(node.method==='GET'?' selected':'')+'>GET</option><option value="POST"'+(node.method==='POST'?' selected':'')+'>POST</option><option value="PUT"'+(node.method==='PUT'?' selected':'')+'>PUT</option><option value="DELETE"'+(node.method==='DELETE'?' selected':'')+'>DELETE</option><option value="PATCH"'+(node.method==='PATCH'?' selected':'')+'>PATCH</option></select></div><div style="flex:1;"><label>URL <span style="color:#dc2626;">*</span></label><input value="'+esc(node.webhook_url||'')+'" placeholder="https://api.example.com/endpoint" onchange="updateNode(\'webhook_url\',this.value)"></div></div>';
+  h+='<div class="form-group"><label>API</label><div style="display:flex;gap:4px;"><div style="flex:0 0 90px;"><select onchange="updateNode(\'method\',this.value)"><option value="GET"'+(node.method==='GET'?' selected':'')+'>GET</option><option value="POST"'+(node.method==='POST'?' selected':'')+'>POST</option><option value="PUT"'+(node.method==='PUT'?' selected':'')+'>PUT</option><option value="DELETE"'+(node.method==='DELETE'?' selected':'')+'>DELETE</option><option value="PATCH"'+(node.method==='PATCH'?' selected':'')+'>PATCH</option></select></div><div style="flex:1;"><input value="'+esc(node.webhook_url||'')+'" placeholder="https://api.example.com/endpoint" onchange="updateNode(\'webhook_url\',this.value)"></div></div></div>';
   h+='<div class="form-group"><label>Body Type</label><select onchange="updateNode(\'body_type\',this.value);showProperties()"><option value="none"'+(node.body_type==='none'||!node.body_type?' selected':'')+'>None</option><option value="raw"'+(node.body_type==='raw'?' selected':'')+'>Raw</option><option value="json"'+(node.body_type==='json'?' selected':'')+'>JSON</option></select></div>';
   if(node.body_type&&node.body_type!=='none'){
     h+='<div class="form-group"><label>Body Content</label><textarea rows="4" onchange="updateNode(\'body_content\',this.value)">'+esc(node.body_content||'')+'</textarea></div>';
@@ -308,6 +336,27 @@ function updateNode(k,v){var n=builderNodes.find(function(x){return x.id===selec
 function updateAgent(k,v){var n=builderNodes.find(function(x){return x.id===selectedNodeId;});if(n){if(!n.agent_config)n.agent_config={};n.agent_config[k]=v;}}
 function deleteNode(id){builderNodes=builderNodes.filter(function(n){return n.id!==id;});builderEdges=builderEdges.filter(function(e){return e.from!==id&&e.to!==id;});if(selectedNodeId===id)selectedNodeId=null;renderCanvas();showProperties();}
 function changeStartType(v){_startType=v;renderCanvas();showProperties();}
+
+  function updateScheduleMode(mode){
+    document.getElementById("sched-daily").style.display=mode==="daily"?"":"none";
+    document.getElementById("sched-every").style.display=mode==="every"?"":"none";
+    if(mode==="daily"){_cronExpr="0 "+document.querySelector("#sched-daily input").value.replace(":"," ")+" * * *";}
+    else{updateScheduleInterval(document.querySelector("#sched-every input[type=number]").value);}
+  }
+  function updateScheduleTime(val){
+    var parts=val.split(":");
+    _cronExpr=parts[1]+" "+parts[0]+" * * *";
+  }
+  function updateScheduleInterval(val){
+    var unit=document.querySelector("#sched-every select").value;
+    var mins=parseInt(val)||1;
+    if(unit==="hours")mins=mins*60;
+    _cronExpr=mins+" * * * *";
+  }
+  function updateScheduleUnit(val){
+    var input=document.querySelector("#sched-every input[type=number]");
+    if(input)updateScheduleInterval(input.value);
+  }
 
 function handleExtractorFile(input){
   var node=builderNodes.find(function(n){return n.id===selectedNodeId;});
@@ -387,7 +436,7 @@ function saveWorkflow(){
   if(builderNodes.length===0){showToast('Add at least one node', 'error');return;}
   closeModal('save-popup');
   var edges=builderEdges.map(function(e){var r={from:e.from,to:e.to};if(e.edge_type)r.edge_type=e.edge_type;return r;});
-  var body={name:name,description:document.getElementById('save-desc').value.trim(),nodes:builderNodes,edges:edges,start_type:_startType};
+  var body={name:name,description:document.getElementById('save-desc').value.trim(),nodes:builderNodes,edges:edges,start_type:_startType,start_input:_startInput};
   if(_startType==='Schedule'&&_cronExpr)body.cron_expr=_cronExpr;
   if(_editingTemplateId){
     // Update existing template
@@ -597,7 +646,13 @@ function startInstance(id){
     showToast('Running local workflow: '+localTpl.name, 'info');
     return;
   }
-  var d={};api('/api/v1/templates/'+id+'/instances',{method:'POST',body:JSON.stringify({input:d})}).then(function(r){
+  // Use template's default input if available
+  var defaultInput='{}';
+  var tmpl=templates.find(function(t){return t.id===id;});
+  if(tmpl&&tmpl.start_input)defaultInput=tmpl.start_input;
+  var inputData={};
+  try{inputData=JSON.parse(defaultInput);}catch(e){inputData={_input:defaultInput};}
+  api('/api/v1/templates/'+id+'/instances',{method:'POST',body:JSON.stringify({input:inputData})}).then(function(r){
   if(!r||!r.id){showToast('Failed to start instance', 'error');return;}
   showToast('Instance started', 'success');
   showPage('instances');

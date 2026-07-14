@@ -79,6 +79,7 @@ func (h *Handler) CreateTemplate(w http.ResponseWriter, r *http.Request) {
 		Edges:       req.Edges,
 		StartType:   req.StartType,
 		CronExpr:    req.CronExpr,
+		StartInput:  req.StartInput,
 	}
 
 	if err := h.store.CreateTemplate(tmpl); err != nil {
@@ -156,6 +157,7 @@ func (h *Handler) UpdateTemplate(w http.ResponseWriter, r *http.Request) {
 	tmpl.Edges = req.Edges
 	tmpl.StartType = req.StartType
 	tmpl.CronExpr = req.CronExpr
+	tmpl.StartInput = req.StartInput
 
 	if err := h.store.UpdateTemplate(tmpl); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
