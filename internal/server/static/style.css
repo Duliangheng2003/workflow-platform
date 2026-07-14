@@ -186,6 +186,34 @@ tr:last-child td{border-bottom:none}
 /* Connection flow animation */
 @keyframes flow{0%{stroke-dashoffset:20}100%{stroke-dashoffset:0}}
 
+/* ===== Node States List ===== */
+.node-states-list{display:flex;flex-direction:column;gap:6px}
+.ns-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:#f8fafc;border:1px solid #f1f5f9;font-size:0.82rem;transition:all 0.15s ease}
+.ns-item code{font-family:monospace;font-size:0.82rem;color:#1a1a2e;flex:1}
+.ns-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.68rem;font-weight:600;min-width:52px;text-align:center}
+.ns-badge-success{background:#d1fae5;color:#065f46}
+.ns-badge-failed{background:#fee2e2;color:#991b1b}
+.ns-badge-running{background:#dbeafe;color:#1d4ed8;animation:pulse-blue 2s infinite}
+.ns-badge-pending{background:#f1f5f9;color:#94a3b8}
+.ns-icon{font-size:0.9rem;width:20px;text-align:center}
+.ns-success{color:#059669}
+.ns-failed{color:#dc2626}
+.ns-running{color:#3b82f6}
+.ns-pending{color:#94a3b8}
+.ns-error{font-size:0.72rem;color:#dc2626;margin-left:auto;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ===== Node Cards (collapsible) ===== */
+.nc-card{background:#fff;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:6px;overflow:hidden}
+.nc-header{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;transition:background 0.12s ease;user-select:none}
+.nc-header:hover{background:#f8fafc}
+.nc-arrow{font-size:0.7rem;color:#94a3b8;width:14px;text-align:center;flex-shrink:0;transition:transform 0.15s ease}
+.nc-name{font-family:monospace;font-size:0.82rem;color:#1a1a2e;flex:1}
+.nc-err{font-size:0.7rem;color:#dc2626;margin-left:auto;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nc-body{display:none;padding:10px 12px;border-top:1px solid #f1f5f9;background:#fafafa}
+.nc-label{font-size:0.72rem;font-weight:600;color:#64748b;margin-bottom:4px;margin-top:6px}
+.nc-label:first-child{margin-top:0}
+.nc-error{font-size:0.78rem;color:#dc2626;font-family:monospace;padding:6px 8px;background:#fef2f2;border-radius:4px;margin-bottom:4px}
+
 /* ===== Toast Notifications ===== */
 #toast-container{position:fixed;top:70px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
 .toast{display:flex;align-items:center;gap:10px;padding:13px 20px;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.15);font-size:0.85rem;font-weight:500;max-width:400px;animation:toast-in 0.35s ease;pointer-events:auto;transition:opacity 0.3s,transform 0.3s;backdrop-filter:blur(4px)}

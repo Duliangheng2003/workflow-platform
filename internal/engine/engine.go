@@ -189,6 +189,10 @@ func (e *Engine) StartInstance(ctx context.Context, tmplID string, input map[str
 		} else if inst.Status != model.StatusPaused {
 			inst.Status = model.StatusCompleted
 			inst.State = result
+			// Reload NodeStates to preserve updates from updateNodeState
+			if latest, err := e.store.GetInstance(inst.ID); err == nil {
+				inst.NodeStates = latest.NodeStates
+			}
 		}
 		_ = e.store.UpdateInstance(inst)
 	}()
@@ -270,17 +274,33 @@ func (e *Engine) buildGraph(tmpl *model.Template) (*compose.Graph[map[string]any
 			if err != nil {
 				return "", err
 			}
+			port := "false"
 			if result {
-				return "true", nil
+				port = "true"
 			}
-			return "false", nil
+			log.Printf("[Condition %s] expression=%q result=%v selected_port=%s", node.ID, node.Expression, result, port)
+			// Find the next node from the condition edge with matching output_port
+			for _, e := range tmpl.Edges {
+				if e.From == node.ID && e.OutputPort == port {
+					return e.To, nil
+				}
+			}
+			// Fallback: if no edge with exact port, pick the first flow edge from this node
+			for _, e := range tmpl.Edges {
+				if e.From == node.ID && e.EdgeType != model.EdgeTypeData {
+					log.Printf("[Condition %s] using fallback edge to %s", node.ID, e.To)
+					return e.To, nil
+				}
+			}
+			return "", fmt.Errorf("no edge found for condition %s port %s", node.ID, port)
 		}
 
-		// Determine end nodes (which branch outputs lead to END)
+		// Collect all possible next node IDs from condition edges as endNodes
+		// eino requires all branch return values to be in endNodes
 		endNodes := make(map[string]bool)
 		for _, edge := range tmpl.Edges {
-			if edge.From == node.ID && edge.To == "END" {
-				endNodes[edge.OutputPort] = true
+			if edge.From == node.ID {
+				endNodes[edge.To] = true
 			}
 		}
 
@@ -357,27 +377,42 @@ func (e *Engine) buildGraph(tmpl *model.Template) (*compose.Graph[map[string]any
 	return g, nil
 }
 func (e *Engine) nodeToLambda(tmpl *model.Template, node *model.Node) (*compose.Lambda, error) {
+	var inner func(context.Context, map[string]any) (map[string]any, error)
 	switch node.Type {
 	case model.NodeTypeCall:
-		return compose.InvokableLambda(e.callLambda(node)), nil
+		inner = e.callLambda(node)
 	case model.NodeTypeLLM:
 		if node.LLMConfig == nil {
 			return nil, fmt.Errorf("llm node %s missing config", node.ID)
 		}
-		return compose.InvokableLambda(e.llmLambda(node)), nil
+		inner = e.llmLambda(node)
 	case model.NodeTypeHuman:
-		return compose.InvokableLambda(e.humanLambda(tmpl, node)), nil
+		inner = e.humanLambda(tmpl, node)
 	case model.NodeTypeAgent:
 		if node.AgentConfig == nil {
 			return nil, fmt.Errorf("agent node %s missing config", node.ID)
 		}
-		return compose.InvokableLambda(e.agentLambda(tmpl, node)), nil
+		inner = e.agentLambda(tmpl, node)
 	case model.NodeTypeCode:
-		return compose.InvokableLambda(e.codeLambda(node)), nil
+		inner = e.codeLambda(node)
+	case model.NodeTypeFilter:
+		inner = e.codeLambda(node)
 	case model.NodeTypeExtractor:
-		return compose.InvokableLambda(e.extractorLambda(node)), nil
+		inner = e.extractorLambda(node)
+	default:
+		return nil, fmt.Errorf("unsupported node type: %s", node.Type)
 	}
-	return nil, fmt.Errorf("unsupported node type: %s", node.Type)
+	nodeID := node.ID
+	return compose.InvokableLambda(func(ctx context.Context, state map[string]any) (map[string]any, error) {
+		e.updateNodeState(ctx, nodeID, "running", nil, "")
+		result, err := inner(ctx, state)
+		if err != nil {
+			e.updateNodeState(ctx, nodeID, "failed", nil, err.Error())
+		} else {
+			e.updateNodeState(ctx, nodeID, "success", result[nodeID], "")
+		}
+		return result, err
+	}), nil
 }
 
 func findPredecessor(edges []model.Edge, nodeID string) string {
@@ -436,4 +471,24 @@ func withInstanceInfo(ctx context.Context, instID string) context.Context {
 func getInstanceID(ctx context.Context) string {
 	v, _ := ctx.Value(instIDKey{}).(string)
 	return v
+}
+
+// updateNodeState updates the execution status of a node in the instance.
+func (e *Engine) updateNodeState(ctx context.Context, nodeID string, status string, output interface{}, nodeErr string) {
+	instID := getInstanceID(ctx)
+	log.Printf("[updateNodeState] instID=%q nodeID=%s status=%s", instID, nodeID, status)
+	if instID == "" {
+		return
+	}
+	inst, err := e.store.GetInstance(instID)
+	if err != nil {
+		return
+	}
+	if inst.NodeStates[nodeID] == nil {
+		inst.NodeStates[nodeID] = &model.NodeExecutionState{NodeID: nodeID}
+	}
+	inst.NodeStates[nodeID].Status = status
+	inst.NodeStates[nodeID].Output = output
+	inst.NodeStates[nodeID].Error = nodeErr
+	_ = e.store.UpdateInstance(inst)
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -153,9 +154,21 @@ func evaluateCondition(state map[string]any, node *model.Node) (bool, error) {
 	var operator string
 	var parts []string
 
-	if strings.Contains(expr, "!=") {
+	if strings.Contains(expr, ">=") {
+		operator = ">="
+		parts = strings.SplitN(expr, ">=", 2)
+	} else if strings.Contains(expr, "<=") {
+		operator = "<="
+		parts = strings.SplitN(expr, "<=", 2)
+	} else if strings.Contains(expr, "!=") {
 		operator = "!="
 		parts = strings.SplitN(expr, "!=", 2)
+	} else if strings.Contains(expr, ">") {
+		operator = ">"
+		parts = strings.SplitN(expr, ">", 2)
+	} else if strings.Contains(expr, "<") {
+		operator = "<"
+		parts = strings.SplitN(expr, "<", 2)
 	} else if strings.Contains(expr, "=") {
 		operator = "="
 		parts = strings.SplitN(expr, "=", 2)
@@ -168,7 +181,6 @@ func evaluateCondition(state map[string]any, node *model.Node) (bool, error) {
 	expected := ""
 	if len(parts) > 1 {
 		expected = strings.TrimSpace(parts[1])
-		expected = strings.Trim(expected, "\"'")
 	}
 
 	segments := strings.Split(path, ".")
@@ -178,10 +190,46 @@ func evaluateCondition(state map[string]any, node *model.Node) (bool, error) {
 
 	actual := resolvePath(state, segments[1:])
 
+	actualNum := 0.0
+	actualIsNum := false
+	if a, ok := actual.(float64); ok {
+		actualNum = a
+		actualIsNum = true
+	}
+
+	expectedNum := 0.0
+	expectedIsNum := false
+	if n, err := strconv.ParseFloat(strings.TrimSpace(expected), 64); err == nil {
+		expectedNum = n
+		expectedIsNum = true
+	}
+
 	switch operator {
+	case ">=":
+		if actualIsNum && expectedIsNum {
+			return actualNum >= expectedNum, nil
+		}
+		return fmt.Sprintf("%v", actual) >= expected, nil
+	case "<=":
+		if actualIsNum && expectedIsNum {
+			return actualNum <= expectedNum, nil
+		}
+		return fmt.Sprintf("%v", actual) <= expected, nil
+	case ">":
+		if actualIsNum && expectedIsNum {
+			return actualNum > expectedNum, nil
+		}
+		return fmt.Sprintf("%v", actual) > expected, nil
+	case "<":
+		if actualIsNum && expectedIsNum {
+			return actualNum < expectedNum, nil
+		}
+		return fmt.Sprintf("%v", actual) < expected, nil
 	case "=":
+		expected = strings.Trim(expected, "\"'")
 		return fmt.Sprintf("%v", actual) == expected, nil
 	case "!=":
+		expected = strings.Trim(expected, "\"'")
 		return fmt.Sprintf("%v", actual) != expected, nil
 	default:
 		if actual == nil {
@@ -233,14 +281,25 @@ func (e *Engine) codeLambda(node *model.Node) func(context.Context, map[string]a
 			lang = "js"
 		}
 
-		// Serialize input data as JSON
-		inputJSON, _ := json.Marshal(state)
-		input := string(inputJSON)
+			// Serialize input data as JSON — merge _global to root for convenience
+			flatState := make(map[string]any)
+			for k, v := range state {
+				flatState[k] = v
+			}
+			if global, ok := flatState["_global"].(map[string]any); ok {
+				for k, v := range global {
+					if _, exists := flatState[k]; !exists {
+						flatState[k] = v
+					}
+				}
+			}
+			inputJSON, _ := json.Marshal(flatState)
+			input := string(inputJSON)
 
 		var cmd *exec.Cmd
 		switch lang {
 		case "js", "javascript":
-			wrapped := fmt.Sprintf("const input = %s; %s", input, script)
+			wrapped := fmt.Sprintf("const data = %s; %s; console.log(JSON.stringify(data))", input, script)
 			cmd = exec.CommandContext(ctx, "node", "-e", wrapped)
 		case "python", "py":
 			escaped := strings.ReplaceAll(input, "'", "'\\''")

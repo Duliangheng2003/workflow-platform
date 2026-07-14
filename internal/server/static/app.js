@@ -389,7 +389,20 @@ function showProperties(){
   }
   h+='</div>';panel.innerHTML=h;
 }
-function updateNode(k,v){var n=builderNodes.find(function(x){return x.id===selectedNodeId;});if(n){n[k]=v;renderCanvas();}}
+function updateNode(k,v){
+  var n=builderNodes.find(function(x){return x.id===selectedNodeId;});
+  if(n){
+    if(k==='id'&&v!==n.id){
+      builderEdges.forEach(function(e){
+        if(e.from===n.id)e.from=v;
+        if(e.to===n.id)e.to=v;
+      });
+      if(nodePositions[n.id]){nodePositions[v]=nodePositions[n.id];delete nodePositions[n.id];}
+      selectedNodeId=v;
+    }
+    n[k]=v;renderCanvas();showProperties();
+  }
+}
 function updateAgent(k,v){var n=builderNodes.find(function(x){return x.id===selectedNodeId;});if(n){if(!n.agent_config)n.agent_config={};n.agent_config[k]=v;}}
 function deleteNode(id){builderNodes=builderNodes.filter(function(n){return n.id!==id;});builderEdges=builderEdges.filter(function(e){return e.from!==id&&e.to!==id;});if(selectedNodeId===id)selectedNodeId=null;renderCanvas();showProperties();}
   pushUndo();
@@ -752,16 +765,71 @@ function deleteInstance(id){
 }
 function showInstance(id){
   document.getElementById('modal-instance-title').textContent='Instance Detail';
-  // Build template name map
   var tmplMap={};
   (templates||[]).forEach(function(t){tmplMap[t.id]=t.name;});
   api('/api/v1/instances/'+id).then(function(i){
     var tmplName=tmplMap[i.template_id]||i.template_id;
     var h='<div class="detail-grid"><div><div class="detail-label">ID</div><div class="detail-value"><code>'+i.id+'</code></div></div><div><div class="detail-label">Status</div><div class="detail-value"><span class="badge badge-'+i.status+'">'+i.status+'</span></div></div><div><div class="detail-label">Template</div><div class="detail-value">'+esc(tmplName)+'</div></div><div><div class="detail-label">Current Node</div><div class="detail-value">'+(i.current_node_id||'-')+'</div></div></div>'+(i.error?'<div style="background:#fef2f2;color:#991b1b;padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;">'+esc(i.error)+'</div>':'')+
-    '<div style="margin-top:8px;"><div class="detail-label">State</div><div class="json-box">'+JSON.stringify(i.state||{},null,2)+'</div></div><div style="margin-top:8px;"><div class="detail-label">Node States</div><div class="json-box">'+JSON.stringify(i.node_states||{},null,2)+'</div></div>';
+    '<div style="margin-top:12px;"><div class="detail-label" style="margin-bottom:8px;">Nodes</div>'+
+    renderNodeCards(i.node_states||{}, i.state||{})+
+    '</div>';
     document.getElementById('instance-detail').innerHTML=h;
     openModal('modal-instance');
   });
+}
+function renderNodeCards(nodeStates, state){
+  var ids=Object.keys(nodeStates);
+  if(ids.length===0)return '<div class="empty-state"><p>No node data.</p></div>';
+  var html='';
+  ids.forEach(function(id){
+    var ns=nodeStates[id];
+    var label=ns.status||'pending';
+    var nodeData=state[id];
+    var hasOutput=nodeData&&typeof nodeData==='object'&&Object.keys(nodeData).length>0;
+    html+='<div class="nc-card">';
+    html+='<div class="nc-header" onclick="toggleNodeCard(this)">';
+    html+='<span class="nc-arrow">&#9654;</span>';
+    html+='<code class="nc-name">'+esc(id)+'</code>';
+    html+='<span class="ns-badge ns-badge-'+label+'">'+label+'</span>';
+    if(ns.error){html+='<span class="nc-err">'+esc(ns.error)+'</span>';}
+    html+='</div>';
+    html+='<div class="nc-body">';
+    if(ns.error){html+='<div class="nc-error">'+esc(ns.error)+'</div>';}
+    if(hasOutput){
+      if(nodeData.output){
+        html+='<div class="nc-label">Output</div>';
+        html+='<div class="json-box" style="max-height:300px;">'+esc(formatNodeOutput(nodeData.output))+'</div>';
+      }
+      if(nodeData.content){
+        html+='<div class="nc-label">Response</div>';
+        html+='<div style="font-size:0.82rem;color:#1a1a2e;line-height:1.5;padding:8px 0;">'+esc(nodeData.content)+'</div>';
+      }
+      if(nodeData.stderr){
+        html+='<div class="nc-label" style="color:#dc2626;">stderr</div>';
+        html+='<div style="font-size:0.78rem;color:#dc2626;font-family:monospace;padding:4px 0;">'+esc(nodeData.stderr)+'</div>';
+      }
+      if(nodeData.error){
+        html+='<div class="nc-label" style="color:#dc2626;">Error</div>';
+        html+='<div style="font-size:0.78rem;color:#dc2626;font-family:monospace;padding:4px 0;">'+esc(nodeData.error)+'</div>';
+      }
+    }
+    html+='</div></div>';
+  });
+  return html;
+}
+function toggleNodeCard(el){
+  var body=el.nextElementSibling;
+  var arrow=el.querySelector('.nc-arrow');
+  if(body.style.display==='none'||!body.style.display){
+    body.style.display='block';
+    arrow.innerHTML='&#9660;';
+  } else {
+    body.style.display='none';
+    arrow.innerHTML='&#9654;';
+  }
+}
+function formatNodeOutput(v){
+  try{var o=JSON.parse(v);return JSON.stringify(o,null,2);}catch(e){return v;}
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function shortId(id){return id?id.substring(0,10)+'...':'-';}

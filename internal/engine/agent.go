@@ -290,7 +290,7 @@ func (t *codeScriptTool) InvokableRun(ctx context.Context, input string, opts ..
 	var cmd *exec.Cmd
 	switch lang {
 	case "js", "javascript":
-		wrapped := fmt.Sprintf("const input = %s; %s", input, script)
+		wrapped := fmt.Sprintf("const data = %s; %s", input, script)
 		cmd = exec.CommandContext(ctx, "node", "-e", wrapped)
 	case "python", "py":
 		escaped := strings.ReplaceAll(input, "'", "'\\''")
