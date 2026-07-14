@@ -506,7 +506,7 @@ function saveWorkflow(){
   if(!name){showToast('Workflow name is required', 'error');return;}
   if(builderNodes.length===0){showToast('Add at least one node', 'error');return;}
   closeModal('save-popup');
-  var edges=builderEdges.map(function(e){var r={from:e.from,to:e.to};if(e.edge_type)r.edge_type=e.edge_type;return r;});
+  var edges=builderEdges.map(function(e){var r={from:e.from,to:e.to};if(e.edge_type)r.edge_type=e.edge_type;if(e.output_port)r.output_port=e.output_port;return r;});
   var body={name:name,description:document.getElementById('save-desc').value.trim(),nodes:builderNodes,edges:edges,start_type:_startType,start_input:_startInput};
   if(_startType==='Schedule'&&_cronExpr)body.cron_expr=_cronExpr;
   if(_editingTemplateId){
@@ -780,8 +780,34 @@ function showInstance(id){
 function renderNodeCards(nodeStates, state){
   var ids=Object.keys(nodeStates);
   if(ids.length===0)return '<div class="empty-state"><p>No node data.</p></div>';
+  // Sort by flow order: topological sort, pending nodes last
+  var edgeFrom={},edgeTo={};
+  (builderEdges||[]).forEach(function(e){
+    if(e.edge_type!=='data'){
+      if(!edgeFrom[e.from])edgeFrom[e.from]=[];
+      edgeFrom[e.from].push(e.to);
+      if(!edgeTo[e.to])edgeTo[e.to]=[];
+      edgeTo[e.to].push(e.from);
+    }
+  });
+  var sorted=[],visited={},queue=[];
+  ids.forEach(function(id){if((!edgeTo[id]||edgeTo[id].length===0)&&nodeStates[id].status!=='pending')queue.push(id);});
+  // If no non-pending starter, add pending starters too
+  if(queue.length===0)ids.forEach(function(id){if(!edgeTo[id]||edgeTo[id].length===0)queue.push(id);});
+  while(queue.length){
+    var id=queue.shift();
+    if(visited[id])continue;
+    visited[id]=true;sorted.push(id);
+    (edgeFrom[id]||[]).forEach(function(nid){
+      if(!visited[nid]&&ids.indexOf(nid)>=0)queue.push(nid);
+    });
+  }
+  // Add remaining unvisited nodes (pending/else branch) at the end
+  ids.forEach(function(id){if(!visited[id])sorted.push(id);});
+  // If no edges exist, use original order
+  if(sorted.length===0)sorted=ids.slice();
   var html='';
-  ids.forEach(function(id){
+  sorted.forEach(function(id){
     var ns=nodeStates[id];
     var label=ns.status||'pending';
     var nodeData=state[id];
@@ -799,10 +825,15 @@ function renderNodeCards(nodeStates, state){
       if(nodeData.output){
         html+='<div class="nc-label">Output</div>';
         html+='<div class="json-box" style="max-height:300px;">'+esc(formatNodeOutput(nodeData.output))+'</div>';
-      }
-      if(nodeData.content){
+      } else if(nodeData.content){
         html+='<div class="nc-label">Response</div>';
         html+='<div style="font-size:0.82rem;color:#1a1a2e;line-height:1.5;padding:8px 0;">'+esc(nodeData.content)+'</div>';
+      } else if(nodeData.result!==undefined){
+        html+='<div class="nc-label">Result</div>';
+        html+='<div style="font-size:0.82rem;color:#1a1a2e;padding:8px 0;">'+(nodeData.result?'true':'false')+'</div>';
+        if(nodeData.port){html+='<div style="font-size:0.75rem;color:#64748b;">Port: '+esc(nodeData.port)+'</div>';}
+      } else {
+        html+='<div class="json-box" style="max-height:200px;">'+esc(JSON.stringify(nodeData,null,2))+'</div>';
       }
       if(nodeData.stderr){
         html+='<div class="nc-label" style="color:#dc2626;">stderr</div>';

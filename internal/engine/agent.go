@@ -97,8 +97,8 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 		}
 
 		// 6. Set up the agent input with business context
-		stateJSON, _ := json.MarshalIndent(state, "", "  ")
-		inputMsg := fmt.Sprintf("Current workflow state:\n```json\n%s\n```", string(stateJSON))
+		stateJSON, _ := json.MarshalIndent(state["_global"], "", "  ")
+		inputMsg := fmt.Sprintf("User input data:\n```json\n%s\n```", string(stateJSON))
 		if len(businessContext) > 0 {
 			inputMsg += "\n\nBusiness context:\n" + strings.Join(businessContext, "\n\n")
 		}

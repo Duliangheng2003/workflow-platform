@@ -270,14 +270,19 @@ func (e *Engine) buildGraph(tmpl *model.Template) (*compose.Graph[map[string]any
 
 		// Create a Branch on the predecessor
 		branchFunc := func(ctx context.Context, state map[string]any) (string, error) {
+			e.updateNodeState(ctx, node.ID, "running", nil, "")
 			result, err := evaluateCondition(state, &node)
+			if v, ok := state["_global"].(map[string]any); ok { log.Printf("[Condition] _global.score=%v", v["score"]) }
 			if err != nil {
+				e.updateNodeState(ctx, node.ID, "failed", nil, err.Error())
 				return "", err
 			}
 			port := "false"
 			if result {
 				port = "true"
 			}
+			state[node.ID] = map[string]any{"result": result, "port": port}
+			e.updateNodeState(ctx, node.ID, "success", state[node.ID], "")
 			log.Printf("[Condition %s] expression=%q result=%v selected_port=%s", node.ID, node.Expression, result, port)
 			// Find the next node from the condition edge with matching output_port
 			for _, e := range tmpl.Edges {
@@ -476,7 +481,6 @@ func getInstanceID(ctx context.Context) string {
 // updateNodeState updates the execution status of a node in the instance.
 func (e *Engine) updateNodeState(ctx context.Context, nodeID string, status string, output interface{}, nodeErr string) {
 	instID := getInstanceID(ctx)
-	log.Printf("[updateNodeState] instID=%q nodeID=%s status=%s", instID, nodeID, status)
 	if instID == "" {
 		return
 	}
