@@ -52,12 +52,18 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 				tools = append(tools, newCodeScriptTool(n, state))
 			}
 		}
-		// Add built-in tools
+		// Add built-in tools based on permissions
 		tools = append(tools, newNowTool())
-		tools = append(tools, newWebFetchTool())
-		tools = append(tools, newWebSearchTool())
-		tools = append(tools, newWriteFileTool())
-
+		if cfg.EnableReadTools {
+			tools = append(tools, newReadFileTool())
+		}
+		if cfg.EnableWriteTools {
+			tools = append(tools, newWriteFileTool())
+		}
+		if cfg.EnableWebTools {
+			tools = append(tools, newWebFetchTool())
+			tools = append(tools, newWebSearchTool())
+		}
 		// 4. Collect business context from Data edges
 		// Data edges connect extractor/code nodes to provide business info
 		var businessContext []string

@@ -196,6 +196,178 @@ func (t *writeFileTool) InvokableRun(ctx context.Context, input string, opts ...
 }
 
 // ——————————————————————————————————————————————————————————————
+// readFileTool — 检索本地文档
+// ——————————————————————————————————————————————————————————————
+
+type readFileTool struct {
+	workDir string
+}
+
+func newReadFileTool() *readFileTool {
+	return &readFileTool{workDir: "."}
+}
+
+func (t *readFileTool) Info(ctx context.Context) (*schema.ToolInfo, error) {
+	return &schema.ToolInfo{
+		Name: "read_file",
+		Desc: "Read or search local files. Can read file contents, list files in a directory, or search for text within files. Use this when you need to access local documents or data files.",
+		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
+			"action": {
+				Type: schema.String,
+				Desc: "Action to perform: 'read' to read a file, 'list' to list files in a directory, 'search' to search for text in files",
+				Required: true,
+			},
+			"path": {
+				Type: schema.String,
+				Desc: "File path or directory path (relative to workspace)",
+				Required: true,
+			},
+			"pattern": {
+				Type: schema.String,
+				Desc: "File pattern for search (e.g. '*.txt', '*.md'). Only used when action is 'search'.",
+			},
+			"query": {
+				Type: schema.String,
+				Desc: "Text to search for within files. Only used when action is 'search'.",
+			},
+		}),
+	}, nil
+}
+
+func (t *readFileTool) InvokableRun(ctx context.Context, input string, opts ...tool.Option) (string, error) {
+	var params struct {
+		Action  string `json:"action"`
+		Path    string `json:"path"`
+		Pattern string `json:"pattern"`
+		Query   string `json:"query"`
+	}
+	if err := json.Unmarshal([]byte(input), &params); err != nil {
+		return "", fmt.Errorf("invalid params: %w", err)
+	}
+
+	switch params.Action {
+	case "read":
+		return t.readFile(params.Path)
+	case "list":
+		return t.listFiles(params.Path)
+	case "search":
+		return t.searchFiles(params.Path, params.Pattern, params.Query)
+	default:
+		return "", fmt.Errorf("unknown action: %s (use 'read', 'list', or 'search')", params.Action)
+	}
+}
+
+func (t *readFileTool) readFile(filePath string) (string, error) {
+	fullPath := filepath.Join(t.workDir, filePath)
+	// Security: prevent directory traversal
+	absPath, err := filepath.Abs(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("invalid path: %w", err)
+	}
+
+	data, err := os.ReadFile(absPath)
+	if err != nil {
+		return "", fmt.Errorf("read file: %w", err)
+	}
+
+	// Truncate very large files
+	content := string(data)
+	if len(content) > 50000 {
+		content = content[:50000] + "\n\n... (file truncated, showing first 50000 bytes)"
+	}
+
+	ext := filepath.Ext(absPath)
+	return fmt.Sprintf("File: %s (%d bytes, type: %s)\n\n%s", absPath, len(data), ext, content), nil
+}
+
+func (t *readFileTool) listFiles(dirPath string) (string, error) {
+	fullPath := filepath.Join(t.workDir, dirPath)
+	absPath, err := filepath.Abs(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("invalid path: %w", err)
+	}
+
+	entries, err := os.ReadDir(absPath)
+	if err != nil {
+		return "", fmt.Errorf("list directory: %w", err)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Directory: %s\n\n", absPath))
+	for _, entry := range entries {
+		info, _ := entry.Info()
+		size := ""
+		if !entry.IsDir() {
+			size = fmt.Sprintf(" (%d bytes)", info.Size())
+		}
+		modTime := info.ModTime().Format("2006-01-02 15:04")
+		dirMark := ""
+		if entry.IsDir() {
+			dirMark = "/"
+		}
+		sb.WriteString(fmt.Sprintf("  %s%s\t%s\t%s\n", entry.Name(), dirMark, modTime, size))
+	}
+	return sb.String(), nil
+}
+
+func (t *readFileTool) searchFiles(dirPath, pattern, query string) (string, error) {
+	if query == "" {
+		return "", fmt.Errorf("search query is required")
+	}
+	if pattern == "" {
+		pattern = "*"
+	}
+
+	fullPath := filepath.Join(t.workDir, dirPath)
+	absPath, err := filepath.Abs(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("invalid path: %w", err)
+	}
+
+	matches, err := filepath.Glob(filepath.Join(absPath, pattern))
+	if err != nil {
+		return "", fmt.Errorf("glob pattern: %w", err)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Search for \"%s\" in %s matching %s\n\n", query, absPath, pattern))
+
+	found := 0
+	for _, file := range matches {
+		info, err := os.Stat(file)
+		if err != nil || info.IsDir() {
+			continue
+		}
+
+		data, err := os.ReadFile(file)
+		if err != nil {
+			continue
+		}
+
+		lines := strings.Split(string(data), "\n")
+		for i, line := range lines {
+			if strings.Contains(line, query) {
+				if found == 0 {
+					sb.WriteString(fmt.Sprintf("--- %s ---\n", file))
+				}
+				sb.WriteString(fmt.Sprintf("  %d: %s\n", i+1, strings.TrimSpace(line)))
+				found++
+				if found >= 50 {
+					sb.WriteString("\n... (showing first 50 matches)")
+					goto done
+				}
+			}
+		}
+	}
+
+done:
+	if found == 0 {
+		return fmt.Sprintf("No matches found for \"%s\" in %s matching %s", query, absPath, pattern), nil
+	}
+	return sb.String(), nil
+}
+
+// ——————————————————————————————————————————————————————————————
 // webSearchTool — 搜索互联网
 // ——————————————————————————————————————————————————————————————
 

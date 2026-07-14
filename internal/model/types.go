@@ -26,10 +26,13 @@ type LLMConfig struct {
 
 // AgentConfig defines configuration for an agent node.
 type AgentConfig struct {
-	Profile      string   `json:"profile"`
-	SystemPrompt string   `json:"system_prompt"`
-	Tools        []string `json:"tools"`
-	MaxTurns     int      `json:"max_turns"`
+	Profile        string   `json:"profile"`
+	SystemPrompt   string   `json:"system_prompt"`
+	Tools          []string `json:"tools"`
+	MaxTurns       int      `json:"max_turns"`
+	EnableReadTools  bool `json:"enable_read_tools,omitempty"`
+	EnableWriteTools bool `json:"enable_write_tools,omitempty"`
+	EnableWebTools   bool `json:"enable_web_tools,omitempty"`
 }
 
 // Node defines a single node in a workflow template.
