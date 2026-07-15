@@ -1,114 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Workflow Platform</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workflow Platform</title>
+  <script type="module" crossorigin src="/app.js"></script>
+  <link rel="stylesheet" crossorigin href="/style.css">
 </head>
 <body>
-<header>
-  <h1>Workflow Platform</h1>
-  <nav>
-    <a onclick="showPage('templates')" class="active" data-page="templates">Templates</a>
-    <a onclick="showPage('instances')" data-page="instances">Instances</a>
-  </nav>
-</header>
-<main>
-<div id="page-templates" class="page active">
-  <div class="card">
-    <div class="card-header"><h3>Workflow Templates</h3><button class="btn btn-primary" onclick="openBuilder()">+ New Template</button></div>
-    <div id="template-list" class="template-grid"><div class="empty-state"><p>No templates yet.</p></div></div>
-  </div>
-</div>
-<div id="page-instances" class="page">
-  <div class="card">
-    <div class="card-header"><h3>Running Instances</h3></div>
-    <table><thead><tr><th>ID</th><th>Template</th><th>Status</th><th>Node</th><th>Time</th><th></th></tr></thead><tbody id="instance-list"><tr><td colspan="6" class="empty-state"><p>No instances yet.</p></td></tr></tbody></table>
-  </div>
-</div>
-</main>
-
-<!-- Builder -->
-<div id="page-builder" class="page" style="position:fixed;top:56px;left:0;right:0;bottom:0;z-index:50;background:#f5f5f5;">
-  <div style="display:flex;flex-direction:column;height:100%;">
-    <div class="builder-toolbar">
-      <button class="toolbar-btn" onclick="closeBuilder()" title="Back">&#8592;</button>
-      <span class="toolbar-divider"></span>
-      <button class="toolbar-btn" onclick="undo()" title="Undo (Ctrl+Z)">&#8630;</button>
-      <button class="toolbar-btn" onclick="redo()" title="Redo (Ctrl+Y)">&#8631;</button>
-      <span class="toolbar-divider"></span>
-      <span style="color:#94a3b8;font-size:0.85rem;flex:1;text-align:center;font-weight:500;" id="builder-title">New Workflow</span>
-      <button class="btn btn-outline btn-sm" onclick="testRunWorkflow()" style="margin-right:4px;">&#9654; Test Run</button>
-      <button class="btn btn-success btn-sm" onclick="openSavePopup()">Save</button>
-    </div>
-    <div style="flex:1;position:relative;overflow:hidden;">
-      <div id="builder-canvas" style="position:absolute;top:0;left:0;right:0;bottom:0;overflow:auto;background:#fafafa;cursor:grab;">
-        <div id="canvas-viewport" style="position:relative;width:2000px;height:2000px;">
-          <svg id="canvas-svg" style="position:absolute;top:0;left:0;width:2000px;height:2000px;pointer-events:none;z-index:1;">
-            <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10" fill="#94a3b8"/></marker></defs>
-          </svg>
-          <svg id="connect-line" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;"></svg>
-          <div id="canvas-nodes" style="position:relative;z-index:2;"></div>
-        </div>
-      </div>
-      <div class="sidebar">
-        <div class="sidebar-btn" onclick="toggleAddPopup()" title="Add node">
-          <div class="icon" style="background:#0f3460;font-size:1.2rem;">+</div>
-        </div>
-      </div>
-      <div id="add-popup" class="add-popup" style="top:56px;left:58px;">
-        <div style="font-size:0.7rem;color:#94a3b8;padding:4px 14px 2px;text-transform:uppercase;">Regular</div>
-        <div class="add-popup-item" onclick="addNode('call')"><span class="picon" style="background:#3b82f6;">C</span> API Call</div>
-        <div class="add-popup-item" onclick="addNode('condition')"><span class="picon" style="background:#f59e0b;">IF</span> Condition</div>
-        <div class="add-popup-item" onclick="addNode('code')"><span class="picon" style="background:#10b981;">&lt;/&gt;</span> Code</div>
-        <div class="add-popup-item" onclick="addNode('filter')"><span class="picon" style="background:#0891b2;">F</span> Filter</div>
-        <div style="font-size:0.7rem;color:#94a3b8;padding:4px 14px 2px;text-transform:uppercase;border-top:1px solid #f1f5f9;margin-top:2px;">Agent</div>
-        <div class="add-popup-item" onclick="addNode('agent')"><span class="picon" style="background:#8b5cf6;">A</span> AI Agent</div>
-        <div class="add-popup-item" onclick="addNode('extractor')"><span class="picon" style="background:#06b6d4;">E</span> Extractor</div>
-      </div>
-      <div id="builder-right" class="right-panel">
-        <div class="panel-toggle" onclick="toggleRight()">&#9654;</div>
-        <div class="right-panel-header">
-          <span style="font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Properties</span>
-        </div>
-        <div id="node-properties" style="padding:14px;flex:1;overflow-y:auto;font-size:0.85rem;">
-          <div class="empty-state" style="padding:16px;"><p style="font-size:0.82rem;">Select a node to edit.</p></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="save-popup" class="modal-overlay">
-  <div class="modal" style="max-width:420px;">
-    <h2 id="save-popup-title">Save Workflow</h2>
-    <div class="form-group"><label>Workflow Name</label><input id="save-name" placeholder="my_workflow"></div>
-    <div class="form-group"><label>Description</label><input id="save-desc" placeholder="What does this workflow do?"></div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeModal('save-popup')">Cancel</button>
-      <button class="btn btn-success" onclick="saveWorkflow()" id="save-popup-btn">Save</button>
-    </div>
-  </div>
-</div>
-
-<div id="modal-instance" class="modal-overlay"><div class="modal" style="max-width:700px;"><h2 id="modal-instance-title">Instance Detail</h2><div id="instance-detail">Loading...</div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-instance')">Close</button></div></div></div>
-
-	<!-- Toast Container -->
-	<div id="toast-container"></div>
-
-	<!-- Custom Confirm Dialog -->
-	<div id="confirm-dialog" class="modal-overlay">
-	  <div class="modal">
-	    <div class="confirm-icon" id="confirm-icon">&#9888;</div>
-	    <div class="confirm-message" id="confirm-message">Are you sure?</div>
-	    <div class="modal-actions">
-	      <button class="btn btn-outline" onclick="closeConfirm(false)">Cancel</button>
-	      <button class="btn btn-danger" onclick="closeConfirm(true)" id="confirm-ok-btn">Confirm</button>
-	    </div>
-	  </div>
-	</div>
-
-<script src="app.js"></script>
+  <div id="root"></div>
 </body>
 </html>

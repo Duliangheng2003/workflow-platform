@@ -5,6 +5,8 @@
 *.so
 *.dylib
 workflow-platform
+workflow-server
+server
 
 # Test binary
 *.test
@@ -20,5 +22,16 @@ go.work
 
 # OS
 .DS_Store
-Thumbs.dbserver
+Thumbs.db
 .superpowers/
+
+# Database
+workflow.db
+workflow.db-shm
+workflow.db-wal
+
+# Frontend dependencies
+web/node_modules/
+
+# Frontend build output
+web/dist/

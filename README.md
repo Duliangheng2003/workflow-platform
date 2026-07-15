@@ -6,46 +6,82 @@ A personal AI workflow engine built on [Eino](https://github.com/cloudwego/eino)
 
 ## Features
 
-- **Visual workflow builder** — drag-and-drop nodes, connect with Flow/Data edges, configure in the right panel
-- **AI Agent** — eino ReAct agent with multi-step reasoning, knows what tools it has
-- **Built-in tools** — `web_search`, `web_fetch`, `now`, `write_file` — every Agent can use them
+- **Visual workflow builder** — drag-and-drop nodes, connect with Flow/Data edges, resizable properties panel
+- **AI Agent** — eino ReAct agent with multi-step reasoning, tool calling, and permission controls
+- **Built-in tools** — `now`, `web_search`, `web_fetch`, `read_file`, `write_file` — toggle permissions per agent
 - **Node-based tools** — API Call and Code nodes can be called as tools by the Agent
 - **Extractor** — upload files, LLM summarizes, passes context to Agent via Data edges
-- **Real-time thinking trace** — Agent's intermediate thoughts and tool calls are displayed live
-- **Code execution** — Code nodes execute JS/Python scripts
+- **Code execution** — Code nodes execute JS/Python scripts with `data` variable
 - **Cron scheduling** — Schedule-type templates run automatically on cron expressions
 - **Dual edge system** — Flow edges for execution order, Data edges for context sharing
+- **Undo/Redo** — Full undo/redo support with keyboard shortcuts (Ctrl+Z / Ctrl+Y)
+- **Template management** — Card grid UI with hover menu, create/edit/delete templates
+- **Instance tracking** — Real-time node state tracking (pending/running/success/failed)
+- **Sub-workflow** — Call other saved templates as sub-processes
 
 ## Node Types
 
-| Type | Label | Border | Description |
-|------|-------|--------|-------------|
+| Type | Label | Color | Description |
+|------|-------|-------|-------------|
 | `call` | API Call | Blue | HTTP request to external API |
 | `agent` | AI Agent | Purple | LLM-powered ReAct agent with tool calling |
-| `condition` | Condition | Orange | Expression evaluation for branching |
+| `condition` | Condition | Orange | IF/ELSE branching with expression evaluation |
 | `code` | Code | Green | JS/Python script execution |
 | `extractor` | Extractor | Cyan | File upload + LLM summarization |
+| `filter` | Filter | Teal | Data filtering/transformation |
+| `subworkflow` | Sub-Workflow | Indigo | Call another template as a sub-process |
 
 ## Edge Types
 
-| Type | Style | Direction | Purpose |
-|------|-------|-----------|---------|
-| Flow | Solid + arrow | A → B | Execution order + data pipeline |
-| Data | Dashed, no arrow | A — B | Context sharing (only Agent/Extractor can create) |
+| Type | Description |
+|------|-------------|
+| `flow` | Execution order — output port → input port |
+| `data` | Context sharing — data port (bottom) → target node |
 
-## Tech Stack
+## Condition Node
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Vanilla HTML/CSS/JS (no framework) |
-| Backend | Go 1.24, [Eino](https://github.com/cloudwego/eino) (ReAct agent, graph execution) |
-| Database | SQLite (default), MySQL supported, in-memory fallback |
-| LLM | OpenAI-compatible APIs (OpenAI, DeepSeek, etc.) |
-| Storage | `database/sql` + go-sqlite3 / go-sql-driver-mysql |
+Condition nodes have two labeled output ports:
+- **IF** (green) — route taken when expression is `true`
+- **ELSE** (red) — route taken when expression is `false`
+
+Expressions use `state.` prefix, e.g. `state._global.score >= 60`. Supported operators: `>=`, `<=`, `>`, `<`, `=`, `!=`.
+
+## Agent Permissions
+
+Each Agent node has independent permission toggles:
+- **Read local files** — enables `read_file` tool (read/list/search files)
+- **Write local files** — enables `write_file` tool
+- **Web access** — enables `web_search` + `web_fetch` tools
 
 ## Quick Start
 
-### 1. Configure
+### Prerequisites
+
+- Go 1.22+
+- Node.js 18+ (for frontend development)
+
+### Build & Run
+
+```bash
+# Build frontend (optional, static files already included)
+cd web && npm install && npm run build && cd ..
+
+# Build and run server
+go build -ldflags=-checklinkname=0 -o workflow-server ./cmd/server/
+./workflow-server
+```
+
+Open http://localhost:8080
+
+### Frontend Development
+
+```bash
+cd web
+npm install
+npm run dev   # Vite dev server on port 5173, proxies API to :8080
+```
+
+### Configuration
 
 Edit `config.yaml`:
 
@@ -54,59 +90,42 @@ server:
   port: 8080
 
 database:
-  path: "workflow.db"  # SQLite file, or leave empty for in-memory
+  path: "workflow.db"    # SQLite
 
 llm:
   profiles:
-    - name: deepseek-chat
+    - name: my-llm
       provider: openai
-      model: deepseek-chat
-      api_key: sk-your-key
-      base_url: "https://api.deepseek.com"
-```
-
-### 2. Run
-
-```bash
-go run -ldflags=-checklinkname=0 ./cmd/server/
-```
-
-Open `http://localhost:8080` in your browser.
-
-> Note: `-ldflags=-checklinkname=0` is required for Go 1.24 compatibility with the sonic library used by Eino.
-
-## Project Structure
-
-```
-cmd/server/main.go              # Entry point
-config.yaml                     # Configuration
-internal/
-  config/config.go              # Config loader
-  model/types.go                # Data models
-  store/                        # Storage (sqlite / mysql / memory)
-  engine/
-    engine.go                   # Eino graph builder + cron scheduler
-    nodes.go                    # Node execution logic
-    agent.go                    # Agent + tool wrappers
-    tools.go                    # Built-in tools (now, web_fetch, etc.)
-    chatmodel.go                # ChatModel wrapper
-    llm.go                      # LLM API client
-  api/handler.go                # HTTP API handlers
-  server/server.go              # Server + embedded static files
-  server/static/                # Frontend (HTML/CSS/JS)
+      model: gpt-4o
+      api_key: sk-xxx
+      base_url: "https://api.openai.com"
 ```
 
 ## Architecture
 
-- Workflow templates are translated into eino `compose.Graph` instances at runtime
-- Flow edges build the execution graph; Data edges are skipped (they only provide context)
-- Agent nodes use eino's `react` agent for ReAct loop with tool calling
-- Built-in tools are automatically available to every Agent
-- Thinking trace is collected via `react.WithMessageFuture()` and polled by the frontend in real-time
-- Extractor uses configured LLM profile to summarize uploaded files
-- Code nodes execute JS/Python via `node`/`python3` CLI commands
-- Cron scheduler runs every minute, checks Schedule-type templates for matching cron expressions
+```
+workflow-platform/
+├── cmd/server/          # Entry point
+├── internal/
+│   ├── api/             # HTTP handlers
+│   ├── config/          # Config loading
+│   ├── engine/          # Workflow execution engine (eino)
+│   ├── model/           # Data types
+│   ├── server/          # HTTP server + embedded static files
+│   └── store/           # SQLite/MySQL/Memory storage
+├── web/                 # React + TypeScript frontend
+│   ├── src/
+│   │   ├── pages/       # TemplatesPage, InstancesPage, BuilderPage
+│   │   ├── components/  # Reusable UI components
+│   │   ├── store.ts     # Zustand state management
+│   │   └── types.ts     # TypeScript type definitions
+│   └── dist/            # Build output → copied to static/
+└── config.yaml          # Server + LLM configuration
+```
 
----
+## Tech Stack
 
-> **Note:** This project is actively under development. Features may change, and some functionality is still being refined.
+- **Backend**: Go, [Eino](https://github.com/cloudwego/eino) (workflow engine)
+- **Frontend**: React 18, TypeScript, Vite, Zustand
+- **Storage**: SQLite (default), MySQL (optional)
+- **LLM**: OpenAI-compatible API (DeepSeek, OpenAI, etc.)
