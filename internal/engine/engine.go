@@ -272,7 +272,6 @@ func (e *Engine) buildGraph(tmpl *model.Template) (*compose.Graph[map[string]any
 		branchFunc := func(ctx context.Context, state map[string]any) (string, error) {
 			e.updateNodeState(ctx, node.ID, "running", nil, "")
 			result, err := evaluateCondition(state, &node)
-			if v, ok := state["_global"].(map[string]any); ok { log.Printf("[Condition] _global.score=%v", v["score"]) }
 			if err != nil {
 				e.updateNodeState(ctx, node.ID, "failed", nil, err.Error())
 				return "", err

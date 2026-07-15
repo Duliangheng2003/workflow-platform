@@ -64,8 +64,52 @@ func (e *Engine) agentLambda(tmpl *model.Template, node *model.Node) func(contex
 			tools = append(tools, newWebFetchTool())
 			tools = append(tools, newWebSearchTool())
 		}
-		// 4. Collect business context from Data edges
+		// 4. Execute data edge source nodes (e.g. extractor) before collecting context
 		// Data edges connect extractor/code nodes to provide business info
+		for _, edge := range tmpl.Edges {
+			if edge.EdgeType != model.EdgeTypeData {
+				continue
+			}
+			contextID := edge.From
+			if edge.From == node.ID {
+				contextID = edge.To
+			}
+			// Skip if already executed
+			if _, ok := state[contextID]; ok {
+				continue
+			}
+			n := findNode(tmpl.Nodes, contextID)
+			if n == nil {
+				continue
+			}
+			// Execute the source node's lambda
+			var fn func(context.Context, map[string]any) (map[string]any, error)
+			switch n.Type {
+			case model.NodeTypeExtractor:
+				fn = e.extractorLambda(n)
+			case model.NodeTypeCode:
+				fn = e.codeLambda(n)
+			case model.NodeTypeCall:
+				fn = e.callLambda(n)
+			default:
+				continue
+			}
+			if fn != nil {
+				e.updateNodeState(ctx, contextID, "running", nil, "")
+				if result, err := fn(ctx, state); err == nil {
+					for k, v := range result {
+						state[k] = v
+					}
+					e.updateNodeState(ctx, contextID, "success", result[contextID], "")
+					log.Printf("[DataEdge] %s executed successfully", contextID)
+				} else {
+					e.updateNodeState(ctx, contextID, "failed", nil, err.Error())
+					log.Printf("[DataEdge] %s failed: %v", contextID, err)
+				}
+			}
+		}
+
+		// 5. Collect business context from Data edges
 		var businessContext []string
 		for _, edge := range tmpl.Edges {
 			if edge.EdgeType != model.EdgeTypeData {
