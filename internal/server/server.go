@@ -2,9 +2,7 @@ package server
 
 import (
 	"context"
-	"embed"
 	"fmt"
-	"io/fs"
 	"log"
 	"net/http"
 	"os/signal"
@@ -15,12 +13,9 @@ import (
 	"github.com/Duliangheng2003/workflow-platform/internal/config"
 	"github.com/Duliangheng2003/workflow-platform/internal/engine"
 	"github.com/Duliangheng2003/workflow-platform/internal/store"
-	"github.com/Duliangheng2003/workflow-platform/internal/store/mysql"
 	"github.com/Duliangheng2003/workflow-platform/internal/store/sqlite"
 )
 
-//go:embed static/*.html static/*.css static/*.js
-var staticFiles embed.FS
 
 func Run(cfg *config.Config) error {
 	var st store.Store
@@ -33,14 +28,6 @@ func Run(cfg *config.Config) error {
 		}
 		log.Println("Using SQLite storage:", cfg.Database.Path)
 	} else if cfg.Database.Host != "" {
-		st, err = mysql.NewStore(cfg.Database)
-		if err != nil {
-			return fmt.Errorf("mysql store: %w", err)
-		}
-		log.Println("Using MySQL storage")
-	} else {
-		st = store.NewMemoryStore()
-		log.Println("Using in-memory storage")
 	}
 
 	eng := engine.New(st, cfg.LLM)
@@ -50,16 +37,12 @@ func Run(cfg *config.Config) error {
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 
+	mux.Handle("GET /", http.FileServer(http.Dir("web/dist")))
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	staticSub, err := fs.Sub(staticFiles, "static")
-	if err != nil {
-		return fmt.Errorf("static sub: %w", err)
-	}
-	mux.Handle("GET /", http.FileServer(http.FS(staticSub)))
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	srv := &http.Server{

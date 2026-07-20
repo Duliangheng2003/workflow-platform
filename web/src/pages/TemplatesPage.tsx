@@ -43,7 +43,7 @@ function TemplateCard({ t, menuOpen, onMenuToggle, onEdit, onRun, onDelete }: an
         <div className="tmpl-card-menu-btn-wrap">
           <button className="tmpl-card-menu-btn" onClick={onMenuToggle}>⋮</button>
           {menuOpen && (
-            <div className="tmpl-card-menu active" onClick={e => e.stopPropagation()}>
+            <div className="tmpl-card-menu active" style={{ position: 'fixed', zIndex: 9999 }} onClick={e => e.stopPropagation()}>
               <div className="tmpl-menu-item" onClick={onRun}>▶ Run</div>
               <div className="tmpl-menu-item" onClick={onEdit}>✎ Edit</div>
               <div className="tmpl-menu-divider" />

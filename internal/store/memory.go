@@ -15,6 +15,7 @@ type MemoryStore struct {
 	templates  map[string]*model.Template
 	instances  map[string]*model.Instance
 	humanTasks map[string]*model.HumanTask
+	llmProfiles map[string]*model.LLMProfile
 	counter    int64
 }
 
@@ -23,6 +24,7 @@ func NewMemoryStore() *MemoryStore {
 		templates:  make(map[string]*model.Template),
 		instances:  make(map[string]*model.Instance),
 		humanTasks: make(map[string]*model.HumanTask),
+		llmProfiles: make(map[string]*model.LLMProfile),
 	}
 }
 
@@ -193,6 +195,56 @@ func (m *MemoryStore) ListHumanTasks(statuses ...model.HumanTaskStatus) ([]*mode
 		}
 	}
 	return result, nil
+}
+
+func (m *MemoryStore) ListLLMProfiles() ([]model.LLMProfile, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make([]model.LLMProfile, 0, len(m.llmProfiles))
+	for _, p := range m.llmProfiles {
+		result = append(result, *p)
+	}
+	return result, nil
+}
+
+func (m *MemoryStore) GetLLMProfile(id string) (*model.LLMProfile, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	p, ok := m.llmProfiles[id]
+	if !ok {
+		return nil, fmt.Errorf("profile not found: %s", id)
+	}
+	return p, nil
+}
+
+func (m *MemoryStore) CreateLLMProfile(p *model.LLMProfile) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if p.ID == "" {
+		p.ID = m.nextID("llm")
+	}
+	m.llmProfiles[p.ID] = p
+	return nil
+}
+
+func (m *MemoryStore) UpdateLLMProfile(p *model.LLMProfile) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.llmProfiles[p.ID]; !ok {
+		return fmt.Errorf("profile not found: %s", p.ID)
+	}
+	m.llmProfiles[p.ID] = p
+	return nil
+}
+
+func (m *MemoryStore) DeleteLLMProfile(id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.llmProfiles[id]; !ok {
+		return fmt.Errorf("profile not found: %s", id)
+	}
+	delete(m.llmProfiles, id)
+	return nil
 }
 
 func (m *MemoryStore) UpdateHumanTask(task *model.HumanTask) error {

@@ -72,7 +72,16 @@ func (s *Store) migrate() error {
 			updated_at DATETIME NOT NULL
 		)`,
 
-		`CREATE TABLE IF NOT EXISTS human_tasks (
+		`CREATE TABLE IF NOT EXISTS llm_profiles (
+				id TEXT PRIMARY KEY,
+				name TEXT NOT NULL UNIQUE,
+				provider TEXT NOT NULL DEFAULT '',
+				model TEXT NOT NULL DEFAULT '',
+				api_key TEXT NOT NULL DEFAULT '',
+				base_url TEXT NOT NULL DEFAULT ''
+			)`,
+
+			`CREATE TABLE IF NOT EXISTS human_tasks (
 			id TEXT PRIMARY KEY,
 			instance_id TEXT NOT NULL,
 			template_id TEXT NOT NULL,
@@ -375,4 +384,62 @@ func join(elems []string, sep string) string {
 		b += sep + e
 	}
 	return b
+}
+
+// ——————————————————————————————————————————————————————————————
+// LLM Profiles
+// ——————————————————————————————————————————————————————————————
+
+func (s *Store) ListLLMProfiles() ([]model.LLMProfile, error) {
+	rows, err := s.db.Query(`SELECT id, name, provider, model, api_key, base_url FROM llm_profiles ORDER BY name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []model.LLMProfile
+	for rows.Next() {
+		var p model.LLMProfile
+		if err := rows.Scan(&p.ID, &p.Name, &p.Provider, &p.Model, &p.APIKey, &p.BaseURL); err != nil {
+			return nil, err
+		}
+		result = append(result, p)
+	}
+	return result, rows.Err()
+}
+
+func (s *Store) GetLLMProfile(id string) (*model.LLMProfile, error) {
+	row := s.db.QueryRow(`SELECT id, name, provider, model, api_key, base_url FROM llm_profiles WHERE id = ?`, id)
+	var p model.LLMProfile
+	err := row.Scan(&p.ID, &p.Name, &p.Provider, &p.Model, &p.APIKey, &p.BaseURL)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("profile not found: %s", id)
+	}
+	return &p, err
+}
+
+func (s *Store) CreateLLMProfile(p *model.LLMProfile) error {
+	if p.ID == "" {
+		p.ID = fmt.Sprintf("llm_%d", time.Now().UnixNano())
+	}
+	_, err := s.db.Exec(`INSERT INTO llm_profiles (id, name, provider, model, api_key, base_url) VALUES (?, ?, ?, ?, ?, ?)`,
+		p.ID, p.Name, p.Provider, p.Model, p.APIKey, p.BaseURL)
+	return err
+}
+
+func (s *Store) UpdateLLMProfile(p *model.LLMProfile) error {
+	_, err := s.db.Exec(`UPDATE llm_profiles SET name=?, provider=?, model=?, api_key=?, base_url=? WHERE id=?`,
+		p.Name, p.Provider, p.Model, p.APIKey, p.BaseURL, p.ID)
+	return err
+}
+
+func (s *Store) DeleteLLMProfile(id string) error {
+	res, err := s.db.Exec(`DELETE FROM llm_profiles WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("profile not found: %s", id)
+	}
+	return nil
 }

@@ -25,4 +25,10 @@ type Store interface {
 	GetHumanTask(id string) (*model.HumanTask, error)
 	ListHumanTasks(status ...model.HumanTaskStatus) ([]*model.HumanTask, error)
 	UpdateHumanTask(task *model.HumanTask) error
+	// LLM Profile operations
+	ListLLMProfiles() ([]model.LLMProfile, error)
+	GetLLMProfile(id string) (*model.LLMProfile, error)
+	CreateLLMProfile(p *model.LLMProfile) error
+	UpdateLLMProfile(p *model.LLMProfile) error
+	DeleteLLMProfile(id string) error
 }

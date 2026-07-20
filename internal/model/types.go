@@ -172,3 +172,21 @@ type CreateTemplateRequest struct {
 	CronExpr    string `json:"cron_expr,omitempty"`
 		StartInput  string `json:"start_input,omitempty"`
 }
+// LLMProfile defines a named LLM configuration stored in the database.
+type LLMProfile struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	APIKey   string `json:"api_key,omitempty"`
+	BaseURL  string `json:"base_url"`
+}
+
+// CreateLLMProfileRequest is the request body for creating/updating a profile.
+type CreateLLMProfileRequest struct {
+	Name     string `json:"name"`
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	APIKey   string `json:"api_key"`
+	BaseURL  string `json:"base_url"`
+}

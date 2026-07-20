@@ -41,6 +41,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	// LLM profiles (server-side config, exposed for frontend dropdown)
 	mux.HandleFunc("GET /api/v1/llm/profiles", h.ListLLMProfiles)
+		mux.HandleFunc("POST /api/v1/llm/profiles", h.CreateLLMProfile)
+		mux.HandleFunc("PUT /api/v1/llm/profiles/{id}", h.UpdateLLMProfile)
+		mux.HandleFunc("DELETE /api/v1/llm/profiles/{id}", h.DeleteLLMProfile)
 }
 
 // ——————————————————————————————————————————————————————————————
@@ -261,11 +264,70 @@ func (h *Handler) ResumeTask(w http.ResponseWriter, r *http.Request) {
 // ——————————————————————————————————————————————————————————————
 
 func (h *Handler) ListLLMProfiles(w http.ResponseWriter, r *http.Request) {
-	names := make([]string, len(h.llmConfig.Profiles))
-	for i, p := range h.llmConfig.Profiles {
-		names[i] = p.Name
+	profiles, err := h.store.ListLLMProfiles()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
-	writeJSON(w, http.StatusOK, names)
+	type safeProfile struct {
+		ID       string `json:"id"`
+		Name     string `json:"name"`
+		Provider string `json:"provider"`
+		Model    string `json:"model"`
+		BaseURL  string `json:"base_url"`
+		KeyHint  string `json:"key_hint"`
+	}
+	safe := make([]safeProfile, len(profiles))
+	for i, p := range profiles {
+		keyHint := ""
+		if len(p.APIKey) > 4 {
+			keyHint = p.APIKey[:2] + "****" + p.APIKey[len(p.APIKey)-4:]
+		}
+		safe[i] = safeProfile{ID: p.ID, Name: p.Name, Provider: p.Provider, Model: p.Model, BaseURL: p.BaseURL, KeyHint: keyHint}
+	}
+	writeJSON(w, http.StatusOK, safe)
+}
+
+func (h *Handler) CreateLLMProfile(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateLLMProfileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request: "+err.Error())
+		return
+	}
+	if req.Name == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	p := &model.LLMProfile{Name: req.Name, Provider: req.Provider, Model: req.Model, APIKey: req.APIKey, BaseURL: req.BaseURL}
+	if err := h.store.CreateLLMProfile(p); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, p)
+}
+
+func (h *Handler) UpdateLLMProfile(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req model.CreateLLMProfileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request: "+err.Error())
+		return
+	}
+	p := &model.LLMProfile{ID: id, Name: req.Name, Provider: req.Provider, Model: req.Model, APIKey: req.APIKey, BaseURL: req.BaseURL}
+	if err := h.store.UpdateLLMProfile(p); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, p)
+}
+
+func (h *Handler) DeleteLLMProfile(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := h.store.DeleteLLMProfile(id); err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // ——————————————————————————————————————————————————————————————

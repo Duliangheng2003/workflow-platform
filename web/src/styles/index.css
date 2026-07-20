@@ -269,7 +269,6 @@ tr:last-child td{border-bottom:none}
 /* Fix: Template card menu */
 .tmpl-card:hover .tmpl-card-menu { display: block; }
 .tmpl-card-menu { display: none; }
-.tmpl-card-menu-btn { position: relative; }
 
 /* Instance detail */
 .detail-value { font-size: 0.88rem; margin-bottom: 8px; color: #1a1a2e; }
