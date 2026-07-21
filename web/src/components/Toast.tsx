@@ -5,9 +5,11 @@ export default function Toast() {
   if (!toast) return null;
   const icons: Record<string, string> = { success: '✓', error: '✗', warning: '⚠', info: 'ⓘ' };
   return (
-    <div className={`toast toast-${toast.type}`}>
-      <span className="toast-icon">{icons[toast.type] || ''}</span>
-      <span>{toast.msg}</span>
+    <div id="toast-container">
+      <div className={`toast toast-${toast.type}`}>
+        <span className="toast-icon">{icons[toast.type] || ''}</span>
+        <span>{toast.msg}</span>
+      </div>
     </div>
   );
 }

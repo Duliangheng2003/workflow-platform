@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { instancesApi } from '../api';
 import type { Instance } from '../types';
+import { marked } from 'marked';
 
 export default function InstancesPage() {
   const { instances, loadInstances, deleteInstance, templates } = useStore();
@@ -9,7 +10,7 @@ export default function InstancesPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   useEffect(() => {
     loadInstances();
-    const hasRunning = instances.some(i => i.status === 'running' || i.status === 'pending');
+    const hasRunning = instances?.some(i => i.status === 'running' || i.status === 'pending');
     if (!hasRunning) return;
     const t = setInterval(loadInstances, 3000);
     return () => clearInterval(t);
@@ -27,7 +28,7 @@ export default function InstancesPage() {
   return (
     <div className="card">
       <div className="card-header"><h3>Instances</h3></div>
-      {instances.length === 0 ? (
+      {instances?.length === 0 ? (
         <div className="empty-state"><p>No instances yet.</p></div>
       ) : (
         <table>
@@ -41,7 +42,7 @@ export default function InstancesPage() {
                 <td>{fmtTime(i.created_at)}</td>
                 <td>
                   <button className="btn btn-xs btn-outline" onClick={() => showDetail(i.id)}>Detail</button>
-                  <button className="btn btn-xs btn-danger" style={{ marginLeft: 4 }} onClick={() => deleteInstance(i.id)}>Delete</button>
+                  <button className="btn btn-xs btn-outline btn-del" style={{ marginLeft: 4 }} onClick={() => deleteInstance(i.id)}>Delete</button>
                 </td>
               </tr>
             ))}
@@ -89,7 +90,7 @@ export default function InstancesPage() {
                                 {nodeData.content && (
                                   <>
                                     <div className="nc-label">Response</div>
-                                    <div style={{ fontSize: '0.82rem', whiteSpace: 'pre-wrap', lineHeight: 1.5, padding: '8px 0' }}>{nodeData.content}</div>
+                                    <div className="md-content" dangerouslySetInnerHTML={{ __html: marked.parse(nodeData.content) }} />
                                   </>
                                 )}
                                 {nodeData.stderr && (

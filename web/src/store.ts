@@ -80,7 +80,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
   loadInstances: async () => {
     const instances = await instancesApi.list();
-    set({ instances });
+    set({ instances: instances || [] });
   },
   startInstance: async (id) => {
     const t = get().templates.find(x => x.id === id);

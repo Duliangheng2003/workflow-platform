@@ -3,6 +3,7 @@
 [English](README.md) | [中文](README.zh_CN.md)
 
 A personal AI workflow engine built on [Eino](https://github.com/cloudwego/eino). Design workflows visually, run them with AI-powered agents that can search the web, call APIs, execute scripts, and reason through multi-step tasks.
+![alt text](7440f0a8-30ad-466b-94b7-98663480cebc.jpeg)
 
 ## Features
 
@@ -16,7 +17,9 @@ A personal AI workflow engine built on [Eino](https://github.com/cloudwego/eino)
 - **Dual edge system** — Flow edges for execution order, Data edges for context sharing
 - **Undo/Redo** — Full undo/redo support with keyboard shortcuts (Ctrl+Z / Ctrl+Y)
 - **Template management** — Card grid UI with hover menu, create/edit/delete templates
-- **Instance tracking** — Real-time node state tracking (pending/running/success/failed)
+- **Instance tracking** — Real-time node state tracking (pending/running/success/failed) with expandable logs
+- **Markdown rendering** — Agent responses rendered as formatted Markdown (headings, tables, code blocks)
+- **LLM profile selection** — Each Agent and Extractor node selects its own LLM profile (provider, model, API key)
 - **Sub-workflow** — Call other saved templates as sub-processes
 
 ## Node Types
@@ -112,7 +115,7 @@ workflow-platform/
 │   ├── engine/          # Workflow execution engine (eino)
 │   ├── model/           # Data types
 │   ├── server/          # HTTP server + embedded static files
-│   └── store/           # SQLite/MySQL/Memory storage
+│   └── store/           # SQLite/Memory storage
 ├── web/                 # React + TypeScript frontend
 │   ├── src/
 │   │   ├── pages/       # TemplatesPage, InstancesPage, BuilderPage
@@ -127,5 +130,5 @@ workflow-platform/
 
 - **Backend**: Go, [Eino](https://github.com/cloudwego/eino) (workflow engine)
 - **Frontend**: React 18, TypeScript, Vite, Zustand
-- **Storage**: SQLite (default), MySQL (optional)
+- **Storage**: SQLite
 - **LLM**: OpenAI-compatible API (DeepSeek, OpenAI, etc.)

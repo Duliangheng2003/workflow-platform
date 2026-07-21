@@ -67,7 +67,7 @@ export default function SettingsPage() {
                 <td><code>{p.key_hint || '****'}</code></td>
                 <td>
                   <button className="btn btn-xs btn-outline" onClick={() => openEdit(p)}>Edit</button>
-                  <button className="btn btn-xs btn-danger" style={{ marginLeft: 4 }} onClick={() => handleDelete(p.id)}>Delete</button>
+                  <button className="btn btn-xs btn-outline" style={{ marginLeft: 4 }} onClick={() => handleDelete(p.id)}>Delete</button>
                 </td>
               </tr>
             ))}

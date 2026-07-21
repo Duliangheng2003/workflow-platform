@@ -3,6 +3,7 @@
 [English](README.md) | [中文](README.zh_CN.md)
 
 基于 [Eino](https://github.com/cloudwego/eino) 构建的个人 AI 工作流引擎。可视化设计工作流，用 AI Agent 执行搜索、API 调用、脚本执行和多步推理任务。
+![alt text](7440f0a8-30ad-466b-94b7-98663480cebc.jpeg)
 
 ## 功能特性
 
@@ -16,7 +17,9 @@
 - **双边系统** — Flow 边控制执行顺序，Data 边共享上下文
 - **撤销/重做** — 支持快捷键 Ctrl+Z / Ctrl+Y
 - **模板管理** — 卡片网格布局，悬浮菜单，增删改查
-- **实例追踪** — 实时节点状态追踪（pending/running/success/failed）
+- **实例追踪** — 实时节点状态追踪（pending/running/success/failed），可展开查看运行日志
+- **Markdown 渲染** — Agent 响应以格式化 Markdown 显示（标题、表格、代码块等）
+- **LLM 配置选择** — 每个 Agent 和 Extractor 节点可独立选择 LLM 配置（供应商、模型、API Key）
 - **子工作流** — 调用其他已保存的模板作为子流程
 
 ## 节点类型
@@ -112,7 +115,7 @@ workflow-platform/
 │   ├── engine/          # 工作流执行引擎（eino）
 │   ├── model/           # 数据类型
 │   ├── server/          # HTTP 服务 + 内嵌静态文件
-│   └── store/           # SQLite/MySQL/内存存储
+│   └── store/           # SQLite/内存存储
 ├── web/                 # React + TypeScript 前端
 │   ├── src/
 │   │   ├── pages/       # TemplatesPage, InstancesPage, BuilderPage
@@ -127,5 +130,5 @@ workflow-platform/
 
 - **后端**：Go、[Eino](https://github.com/cloudwego/eino)（工作流引擎）
 - **前端**：React 18、TypeScript、Vite、Zustand
-- **存储**：SQLite（默认）、MySQL（可选）
+- **存储**：SQLite
 - **LLM**：OpenAI 兼容 API（DeepSeek、OpenAI 等）

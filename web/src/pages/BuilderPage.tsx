@@ -175,6 +175,7 @@ export default function BuilderPage() {
         <span className="toolbar-divider" />
         <span className="builder-title">{editingTemplateId ? 'Edit: ' + (templates.find(t => t.id === editingTemplateId)?.name || '') : 'New Workflow'}</span>
         <button className="btn btn-outline btn-sm" style={{ marginRight: 4 }}>▶ Test Run</button>
+        <button className="toolbar-btn" onClick={() => setPanelCollapsed(!panelCollapsed)} title={panelCollapsed ? 'Show panel' : 'Hide panel'} style={{ fontSize: '0.9rem' }}>{panelCollapsed ? '◀' : '▶'}</button>
         <button className="btn btn-success btn-sm" onClick={openSave}>Save</button>
       </div>
       <div className="builder-body">
@@ -380,6 +381,58 @@ export default function BuilderPage() {
                 {selectedNode.type === 'agent' && <AgentProps />}
                 {selectedNode.type === 'subworkflow' && <SubWorkflowProps />}
                 {selectedNode.type === 'extractor' && <ExtractorProps />}
+
+                {/* Connected nodes */}
+                <div className="props-card" style={{ marginTop: 10 }}>
+                  <div className="props-title" style={{ fontSize: '0.85rem', marginBottom: 8 }}>Connections</div>
+                  {(() => {
+                    const nextEdges = builderEdges.filter(e => e.from === selectedNode.id);
+                    const prevEdges = builderEdges.filter(e => e.to === selectedNode.id);
+                    return (
+                      <>
+                        {prevEdges.length > 0 && (
+                          <div style={{ marginBottom: 8 }}>
+                            <div className="detail-label">From</div>
+                            {prevEdges.map(e => {
+                              const src = builderNodes.find(n => n.id === e.from);
+                              return (
+                                <div key={e.from + e.to} className="next-step-item" style={{ cursor: 'default', padding: '4px 6px' }}
+                                  onClick={() => useStore.setState({ selectedNodeId: e.from })}>
+                                  <span className="next-step-icon" style={{ background: NODE_COLORS[src?.type || ''] || '#64748b', width: 22, height: 22, fontSize: '0.6rem' }}>
+                                    {src ? src.type[0].toUpperCase() : '?'}
+                                  </span>
+                                  <span className="next-step-name" style={{ fontSize: '0.8rem' }}>{e.from}</span>
+                                  <span className="edge-type-badge" style={{ background: '#f1f5f9', color: '#64748b', fontSize: '0.6rem' }}>{e.edge_type}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {nextEdges.length > 0 && (
+                          <div>
+                            <div className="detail-label">To</div>
+                            {nextEdges.map(e => {
+                              const tgt = builderNodes.find(n => n.id === e.to);
+                              return (
+                                <div key={e.from + e.to} className="next-step-item" style={{ cursor: 'default', padding: '4px 6px' }}
+                                  onClick={() => useStore.setState({ selectedNodeId: e.to })}>
+                                  <span className="next-step-icon" style={{ background: NODE_COLORS[tgt?.type || ''] || '#64748b', width: 22, height: 22, fontSize: '0.6rem' }}>
+                                    {tgt ? tgt.type[0].toUpperCase() : '?'}
+                                  </span>
+                                  <span className="next-step-name" style={{ fontSize: '0.8rem' }}>{e.to}</span>
+                                  <span className="edge-type-badge" style={{ background: '#f1f5f9', color: '#64748b', fontSize: '0.6rem' }}>{e.edge_type}{e.output_port ? ` (${e.output_port})` : ''}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {prevEdges.length === 0 && nextEdges.length === 0 && (
+                          <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>No connections</div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             ) : (
               <div className="empty-state"><p>Select a node to edit.</p></div>
@@ -410,11 +463,11 @@ function AgentProps() {
   const { updateAgent, builderNodes, selectedNodeId } = useStore();
   const node = builderNodes.find(n => n.id === selectedNodeId);
   const a = node?.agent_config || { profile: '', system_prompt: '', tools: [], max_turns: 10 };
-  const [profiles, setProfiles] = useState<string[]>([]);
+  const [profiles, setProfiles] = useState<any[]>([]);
   useEffect(() => { fetch('/api/v1/llm/profiles').then(r => r.json()).then(setProfiles).catch(() => {}); }, []);
   return (
     <>
-      <div className="form-group"><label>LLM Profile</label><select value={a.profile} onChange={e => updateAgent('profile', e.target.value)}><option value="">Select...</option>{profiles.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+      <div className="form-group"><label>LLM Profile</label><select value={a.profile} onChange={e => updateAgent('profile', e.target.value)}><option value="">Select...</option>{profiles.map(p => <option key={p.id || p.name} value={p.name}>{p.name}</option>)}</select></div>
       <div className="form-group"><label>System Prompt</label><textarea rows={3} value={a.system_prompt} onChange={e => updateAgent('system_prompt', e.target.value)} /></div>
       <div className="form-group"><label>Max Turns</label><input type="number" value={a.max_turns} onChange={e => updateAgent('max_turns', parseInt(e.target.value) || 10)} /></div>
       <div className="perm-section">
@@ -442,12 +495,12 @@ function SubWorkflowProps() {
 function ExtractorProps() {
   const { updateNode, builderNodes, selectedNodeId } = useStore();
   const node = builderNodes.find(n => n.id === selectedNodeId);
-  const [profiles, setProfiles] = useState<string[]>([]);
+  const [profiles, setProfiles] = useState<any[]>([]);
   useEffect(() => { fetch('/api/v1/llm/profiles').then(r => r.json()).then(setProfiles).catch(() => {}); }, []);
   return (
     <>
       <div className="form-group"><label>Description</label><input value={node?.description || ''} onChange={e => updateNode('description', e.target.value)} /></div>
-      <div className="form-group"><label>LLM Profile</label><select value={node?.llm_profile || ''} onChange={e => updateNode('llm_profile', e.target.value)}><option value="">Select...</option>{profiles.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+      <div className="form-group"><label>LLM Profile</label><select value={node?.llm_profile || ''} onChange={e => updateNode('llm_profile', e.target.value)}><option value="">Select...</option>{profiles.map(p => <option key={p.id || p.name} value={p.name}>{p.name}</option>)}</select></div>
       <div className="form-group"><label>Extract Prompt</label><textarea rows={3} value={node?.extract_prompt || ''} onChange={e => updateNode('extract_prompt', e.target.value)} /></div>
       <div className="form-group"><label>File</label><input type="file" /></div>
     </>

@@ -1,14 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useStore } from '../store';
-import type { Template } from '../types';
 
 export default function TemplatesPage() {
   const { templates, loadTemplates, openBuilder, startInstance, deleteTemplate } = useStore();
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
   useEffect(() => { loadTemplates(); }, []);
 
   return (
-    <div className="card" onClick={() => setOpenMenu(null)}>
+    <div className="card">
       <div className="card-header">
         <h3>Workflow Templates</h3>
         <button className="btn btn-primary" onClick={() => openBuilder()}>+ New Template</button>
@@ -18,15 +16,7 @@ export default function TemplatesPage() {
       ) : (
         <div className="template-grid">
           {templates.map(t => (
-            <TemplateCard
-              key={t.id}
-              t={t}
-              menuOpen={openMenu === t.id}
-              onMenuToggle={(e) => { e.stopPropagation(); setOpenMenu(openMenu === t.id ? null : t.id); }}
-              onEdit={() => { setOpenMenu(null); openBuilder(t); }}
-              onRun={() => { setOpenMenu(null); startInstance(t.id); }}
-              onDelete={() => { setOpenMenu(null); deleteTemplate(t.id); }}
-            />
+            <TemplateCard key={t.id} t={t} onEdit={() => openBuilder(t)} onRun={() => startInstance(t.id)} onDelete={() => deleteTemplate(t.id)} />
           ))}
         </div>
       )}
@@ -34,25 +24,45 @@ export default function TemplatesPage() {
   );
 }
 
-function TemplateCard({ t, menuOpen, onMenuToggle, onEdit, onRun, onDelete }: any) {
+function TemplateCard({ t, onEdit, onRun, onDelete }: any) {
+  const [open, setOpen] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen(!open);
+  };
+
   const st = t.start_type || 'User Input';
   return (
-    <div className="tmpl-card">
+    <div className="tmpl-card" ref={cardRef} style={open ? { zIndex: 9999 } : undefined}>
       <div className="tmpl-card-top">
         <div className="tmpl-card-name">{t.name}</div>
-        <div className="tmpl-card-menu-btn-wrap">
-          <button className="tmpl-card-menu-btn" onClick={onMenuToggle}>⋮</button>
-          {menuOpen && (
-            <div className="tmpl-card-menu active" style={{ position: 'fixed', zIndex: 9999 }} onClick={e => e.stopPropagation()}>
-              <div className="tmpl-menu-item" onClick={onRun}>▶ Run</div>
-              <div className="tmpl-menu-item" onClick={onEdit}>✎ Edit</div>
+        <div className={'tmpl-card-menu-wrap' + (open ? ' open' : '')}>
+          <button className="tmpl-card-menu-btn" onClick={handleClick}>⋮</button>
+          {open && (
+            <div className="tmpl-card-menu active" onClick={e => e.stopPropagation()}>
+              <div className="tmpl-menu-item" onClick={() => { setOpen(false); onRun(); }}>▶ Run</div>
+              <div className="tmpl-menu-item" onClick={() => { setOpen(false); onEdit(); }}>✎ Edit</div>
               <div className="tmpl-menu-divider" />
-              <div className="tmpl-menu-item tmpl-menu-item-danger" onClick={onDelete}>✕ Delete</div>
+              <div className="tmpl-menu-item tmpl-menu-item-danger" onClick={() => { setOpen(false); onDelete(); }}>✕ Delete</div>
             </div>
           )}
         </div>
       </div>
       <div className="tmpl-card-bottom">
+        {t.description && <div className="tmpl-card-desc">{t.description}</div>}
         <div className="tmpl-card-meta">
           <span className={`tmpl-badge ${st === 'Schedule' ? 'tmpl-badge-schedule' : 'tmpl-badge-manual'}`}>{st}</span>
           <span className="tmpl-meta-item">{(t.nodes || []).length} nodes</span>
